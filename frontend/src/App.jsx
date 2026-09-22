@@ -1,0 +1,146 @@
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+} from "react-router-dom";
+
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Resumes from "./pages/Resumes";
+import Sidebar from "./components/Sidebar";
+import Applications from "./pages/Applications";
+import InterviewPrep from "./pages/InterviewPrep";
+import Settings from "./pages/Settings";
+import ResumeChat from "./pages/ResumeChat";
+import CareerAnalysis from "./pages/CareerAnalysis";
+import CareerHistory from "./pages/CareerHistory";
+import CareerHistoryDetail from "./pages/CareerHistoryDetail";
+import ResumeIntelligence from "./pages/ResumeIntelligence";
+function App() {
+
+  return (
+    <BrowserRouter>
+
+      <Routes>
+
+        <Route
+          path="/"
+          element={
+            <Navigate
+              to="/dashboard"
+              replace
+            />
+          }
+        />
+
+        <Route
+          path="/login"
+          element={<Login />}
+        />
+
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/resumes"
+          element={
+            <ProtectedRoute>
+              <div className="dashboard-layout">
+                <Sidebar />
+                <main className="dashboard-main">
+                  <Resumes />
+                </main>
+              </div>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/applications"
+          element={
+            <ProtectedRoute>
+              <Applications />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/interview-prep"
+          element={
+            <ProtectedRoute>
+              <InterviewPrep />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/resume-chat"
+          element={
+            <ProtectedRoute>
+              <ResumeChat />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/career-analysis"
+          element={
+            <ProtectedRoute>
+              <CareerAnalysis />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+  path="/career-history"
+  element={
+    <ProtectedRoute>
+      <CareerHistory />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/career-history/:id"
+  element={
+    <ProtectedRoute>
+      <CareerHistoryDetail />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/resume-intelligence"
+  element={
+    <ProtectedRoute>
+      <ResumeIntelligence />
+    </ProtectedRoute>
+  }
+/>
+      </Routes>
+
+      
+
+    </BrowserRouter>
+  );
+}
+
+
+export default App;

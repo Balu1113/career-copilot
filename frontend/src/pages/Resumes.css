@@ -1,0 +1,149 @@
+.resumes-page {
+  padding: 36px 42px;
+}
+
+.page-header {
+  margin-bottom: 28px;
+}
+
+.page-header h1 {
+  margin: 0 0 6px;
+  font-size: 30px;
+}
+
+.page-header p {
+  margin: 0;
+  color: #64748b;
+}
+
+.resume-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      auto-fill,
+      minmax(280px, 1fr)
+    );
+
+  gap: 18px;
+}
+
+.resume-card {
+  position: relative;
+
+  background: white;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 14px;
+
+  padding: 20px;
+
+  min-height: 190px;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.resume-card.active {
+  border-color: #6366f1;
+}
+
+.resume-icon {
+  width: 48px;
+  height: 48px;
+
+  border-radius: 10px;
+
+  background: #eef2ff;
+
+  color: #4f46e5;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 15px;
+}
+
+.resume-info h3 {
+  margin: 0 0 5px;
+}
+
+.resume-info p {
+  margin: 0;
+
+  color: #64748b;
+
+  font-size: 13px;
+}
+
+.active-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+
+  color: #15803d;
+
+  font-size: 13px;
+
+  margin-top: 12px;
+}
+
+.resume-actions {
+  margin-top: auto;
+
+  display: flex;
+
+  gap: 10px;
+}
+
+.resume-actions button {
+  border: none;
+
+  background: #eef2ff;
+
+  color: #4f46e5;
+
+  padding: 8px 11px;
+
+  border-radius: 7px;
+
+  font-size: 13px;
+}
+
+.resume-actions .delete-button {
+  background: #fef2f2;
+
+  color: #dc2626;
+
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.empty-state {
+  background: white;
+
+  border: 1px dashed #cbd5e1;
+
+  border-radius: 14px;
+
+  padding: 60px 20px;
+
+  text-align: center;
+
+  color: #64748b;
+}
+
+.empty-state h2 {
+  color: #172033;
+}
+
+.page-loading {
+  padding: 50px;
+
+  text-align: center;
+
+  color: #64748b;
+}

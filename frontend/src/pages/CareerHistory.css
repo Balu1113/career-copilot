@@ -1,0 +1,325 @@
+.career-history-page {
+  max-width: 1200px;
+}
+
+.career-history-header {
+  margin-bottom: 24px;
+}
+
+.career-history-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+}
+
+.career-history-title > svg {
+  color: #6366f1;
+  margin-top: 2px;
+}
+
+.career-history-title h1 {
+  margin: 0;
+  font-size: 29px;
+}
+
+.career-history-title p {
+  margin: 7px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+
+/* Error */
+
+.career-history-error {
+  padding: 13px 15px;
+  margin-bottom: 20px;
+  border: 1px solid #fecaca;
+  border-radius: 9px;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+
+/* Loading */
+
+.career-history-loading {
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: white;
+  color: #64748b;
+}
+
+.career-history-loading p {
+  margin: 0;
+  font-size: 14px;
+}
+
+
+/* Empty */
+
+.career-history-empty {
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: white;
+  text-align: center;
+  color: #64748b;
+}
+
+.career-history-empty svg {
+  color: #94a3b8;
+  margin-bottom: 10px;
+}
+
+.career-history-empty h2 {
+  margin: 0 0 7px;
+  color: #111827;
+  font-size: 19px;
+}
+
+.career-history-empty p {
+  margin: 0;
+  font-size: 14px;
+}
+
+
+/* History list */
+
+.career-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+
+/* History card */
+
+.career-history-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 19px;
+  border: 1px solid #e5e7eb;
+  border-radius: 13px;
+  background: white;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.career-history-card:hover {
+  border-color: #c7d2fe;
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.06);
+}
+
+
+/* Icon */
+
+.career-history-card-icon {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+
+/* Content */
+
+.career-history-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.career-history-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.career-history-card-top h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 16px;
+}
+
+.career-history-role {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.career-history-arrow {
+  flex-shrink: 0;
+  color: #94a3b8;
+}
+
+
+/* Metadata */
+
+.career-history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.career-history-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.career-history-meta svg {
+  color: #94a3b8;
+}
+
+
+/* Description */
+
+.career-history-description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid #f1f5f9;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+
+/* Mobile */
+
+@media (max-width: 600px) {
+  .career-history-card {
+    padding: 15px;
+    cursor: pointer;
+  }
+
+  .career-history-card-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .career-history-meta {
+    gap: 8px;
+  }
+}
+
+
+/* =====================================================
+   HISTORY ACTIONS
+===================================================== */
+
+.career-history-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.career-view-btn,
+.career-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.career-view-btn {
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.career-view-btn:hover {
+  background: #e0e7ff;
+}
+
+.career-delete-btn {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.career-delete-btn:hover {
+  background: #fee2e2;
+}
+
+.career-delete-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 700px) {
+  .career-history-card-top {
+    flex-direction: column;
+  }
+
+  .career-history-actions {
+    width: 100%;
+  }
+
+  .career-view-btn,
+  .career-delete-btn {
+    flex: 1;
+  }
+}
+
+/* Match Summary */
+
+.history-match-summary {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.history-summary-label {
+  display: block;
+  margin-bottom: 5px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.history-match-summary p {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.6;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

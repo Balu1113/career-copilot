@@ -1,0 +1,337 @@
+.resume-intelligence-page {
+  padding-bottom: 40px;
+}
+
+.resume-intelligence-header {
+  margin-bottom: 24px;
+}
+
+.resume-intelligence-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.resume-intelligence-title svg {
+  margin-top: 3px;
+}
+
+.resume-intelligence-title h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.resume-intelligence-title p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.resume-intelligence-selector {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.resume-intelligence-selector label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.resume-intelligence-selector select {
+  width: 100%;
+  max-width: 500px;
+  padding: 11px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 14px;
+  outline: none;
+}
+
+.resume-intelligence-selector select:focus {
+  border-color: #64748b;
+}
+
+.resume-intelligence-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.resume-intelligence-card h2 {
+  margin: 0 0 14px;
+  font-size: 17px;
+  font-weight: 650;
+  color: #1e293b;
+}
+
+.intelligence-summary {
+  margin: 0;
+  color: #475569;
+  line-height: 1.7;
+  font-size: 14px;
+}
+
+.intelligence-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.intelligence-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 11px;
+  border-radius: 7px;
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  font-size: 13px;
+}
+
+.intelligence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.intelligence-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.intelligence-list-item > div:last-child {
+  flex: 1;
+}
+
+.intelligence-list-item p {
+  margin: 0;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.intelligence-number {
+  min-width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.intelligence-list-icon {
+  margin-bottom: 5px;
+  color: #64748b;
+}
+
+.resume-intelligence-error {
+  padding: 13px 15px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 14px;
+}
+
+.resume-intelligence-loading,
+.resume-intelligence-loading-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #64748b;
+}
+
+.resume-intelligence-loading {
+  justify-content: center;
+  min-height: 180px;
+  flex-direction: column;
+}
+
+.resume-intelligence-loading p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.resume-intelligence-loading-inline {
+  font-size: 14px;
+}
+
+.spinning {
+  animation: intelligence-spin 1s linear infinite;
+}
+
+@keyframes intelligence-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .resume-intelligence-title h1 {
+    font-size: 23px;
+  }
+
+  .resume-intelligence-card {
+    padding: 16px;
+  }
+
+  .intelligence-tag {
+    font-size: 12px;
+  }
+}
+
+.generate-intelligence-button {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 8px;
+  background: #1e293b;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.generate-intelligence-button:hover {
+  background: #334155;
+}
+
+.generate-intelligence-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.intelligence-projects {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.intelligence-project {
+  padding: 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.intelligence-project-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.intelligence-project-header h3 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.intelligence-project-section {
+  margin-top: 14px;
+}
+
+.intelligence-project-section h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.intelligence-project-section ul {
+  display: block;
+  margin: 0;
+  padding-left: 22px;
+  color: #475569;
+}
+
+.intelligence-project-section li {
+  display: list-item;
+  margin: 0 0 8px;
+  line-height: 1.55;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.intelligence-project-section li:last-child {
+  margin-bottom: 0;
+}
+
+.intelligence-item-title {
+  margin: 0 0 5px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.intelligence-item-meta {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+
+.intelligence-list-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.intelligence-item-description {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  color: #475569;
+}
+
+.intelligence-item-description li {
+  margin-bottom: 7px;
+  line-height: 1.55;
+}
+
+.intelligence-item-description li:last-child {
+  margin-bottom: 0;
+}
+
+.intelligence-item-text {
+  margin: 10px 0 0;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.intelligence-item-technologies {
+  margin-top: 14px;
+}
+
+.intelligence-item-technologies strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #475569;
+}
