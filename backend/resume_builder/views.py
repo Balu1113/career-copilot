@@ -16,6 +16,7 @@ from .serializers import (
     ResumeTemplateSerializer,
 )
 from .services.docx_renderer import render_resume_to_docx
+from .services.pdf_renderer import render_resume_to_pdf
 from .services.resume_generator import (
     generate_resume_optimization,
     generate_resume_summary,
@@ -47,8 +48,19 @@ def _render_generated_resume_docx(
         exist_ok=True,
     )
 
+    is_uploaded_modifier = bool(
+        generated_resume.source_resume
+        and generated_resume.mode
+        == GeneratedResume.MODE_MODIFIER
+    )
+
+    output_extension = (
+        "pdf" if is_uploaded_modifier else "docx"
+    )
+
     output_filename = (
-        f"resume_{generated_resume.id}.docx"
+        f"resume_{generated_resume.id}."
+        f"{output_extension}"
     )
 
     output_path = output_dir / output_filename
@@ -63,11 +75,21 @@ def _render_generated_resume_docx(
             or {}
         )
 
-    render_resume_to_docx(
-        content=content,
-        template_data=template_data,
-        output_path=output_path,
-    )
+    if is_uploaded_modifier:
+        render_resume_to_pdf(
+            content=content,
+            template_data={
+                **template_data,
+                "uploaded_layout": True,
+            },
+            output_path=output_path,
+        )
+    else:
+        render_resume_to_docx(
+            content=content,
+            template_data=template_data,
+            output_path=output_path,
+        )
 
     generated_resume.output_file = (
         f"generated_resumes/{output_filename}"
@@ -740,51 +762,10 @@ class GeneratedResumeUpdateView(APIView):
                 ]
             )
 
-            # ---------------------------------------------
-            # Render updated DOCX
-            # ---------------------------------------------
-
-            output_dir = (
-                Path(settings.MEDIA_ROOT)
-                / "generated_resumes"
-            )
-
-            output_dir.mkdir(
-                parents=True,
-                exist_ok=True,
-            )
-
-            output_filename = (
-                f"resume_{generated_resume.id}.docx"
-            )
-
-            output_path = (
-                output_dir / output_filename
-            )
-
-            template_data = {}
-
-            if generated_resume.template:
-                template_data = (
-                    generated_resume
-                    .template
-                    .template_data
-                    or {}
-                )
-
-            render_resume_to_docx(
-                content=content,
-                template_data=template_data,
-                output_path=output_path,
-            )
-
-            # ---------------------------------------------
-            # Save generated DOCX
-            # ---------------------------------------------
-
-            generated_resume.output_file = (
-                f"generated_resumes/"
-                f"{output_filename}"
+            # Render the updated file using the source-aware renderer.
+            _render_generated_resume_docx(
+                generated_resume,
+                content,
             )
 
             generated_resume.status = (
@@ -1021,6 +1002,15 @@ class GeneratedResumeAIEditView(APIView):
 class UploadedResumeEditForkView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @staticmethod
+    def _source_file_url(request, resume):
+        if not resume.file:
+            return None
+
+        return request.build_absolute_uri(
+            resume.file.url
+        )
+
     def post(self, request, resume_id):
         try:
             resume = Resume.objects.get(
@@ -1052,6 +1042,10 @@ class UploadedResumeEditForkView(APIView):
                     "id": existing_fork.id,
                     "title": existing_fork.title,
                     "mode": existing_fork.mode,
+                    "source_file": self._source_file_url(
+                        request,
+                        resume,
+                    ),
                     "content": existing_fork.content,
                     "output_file": (
                         existing_fork
@@ -1125,6 +1119,10 @@ class UploadedResumeEditForkView(APIView):
                     "id": generated_resume.id,
                     "title": generated_resume.title,
                     "mode": generated_resume.mode,
+                    "source_file": self._source_file_url(
+                        request,
+                        resume,
+                    ),
                     "content": generated_resume.content,
                     "output_file": (
                         generated_resume
@@ -1179,6 +1177,22 @@ class GeneratedResumeDownloadView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        if (
+            generated_resume.mode
+            == GeneratedResume.MODE_MODIFIER
+            and generated_resume.source_resume
+        ):
+            _render_generated_resume_docx(
+                generated_resume,
+                generated_resume.content or {},
+            )
+            generated_resume.save(
+                update_fields=[
+                    "output_file",
+                    "updated_at",
+                ]
+            )
+
         if not generated_resume.output_file:
             return Response(
                 {
@@ -1197,8 +1211,14 @@ class GeneratedResumeDownloadView(APIView):
                 )
             )
 
+            suffix = (
+                ".pdf"
+                if generated_resume.output_file.name.lower().endswith(".pdf")
+                else ".docx"
+            )
+
             filename = (
-                f"{generated_resume.title}.docx"
+                f"{generated_resume.title}{suffix}"
             )
 
             return FileResponse(

@@ -4,7 +4,14 @@ from .models import CareerAnalysis
 
 
 class CareerAnalysisSerializer(serializers.Serializer):
+    RESUME_TYPE_CHOICES = ["uploaded", "generated"]
+
     resume_id = serializers.IntegerField()
+
+    resume_type = serializers.ChoiceField(
+        choices=RESUME_TYPE_CHOICES,
+        default="uploaded",
+    )
 
     job_description = serializers.CharField(
         min_length=50,
@@ -35,7 +42,6 @@ class CareerAnalysisHistorySerializer(
     serializers.ModelSerializer
 ):
     resume_title = serializers.CharField(
-        source="resume.title",
         read_only=True,
     )
 

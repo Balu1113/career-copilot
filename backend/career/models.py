@@ -13,8 +13,27 @@ class CareerAnalysis(models.Model):
 
     resume = models.ForeignKey(
         Resume,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="career_analyses",
+    )
+
+    # Snapshot of the analyzed resume title. Uploaded resumes
+    # keep their linked resume title; generated resumes store
+    # their own title because they are not a Resume record.
+    resume_title = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+    )
+
+    # Snapshot of the resume text used for the analysis so
+    # interview evaluation works even when the linked resume
+    # is removed or the analysis came from a generated resume.
+    resume_context = models.TextField(
+        blank=True,
+        default="",
     )
 
     job_description = models.TextField()

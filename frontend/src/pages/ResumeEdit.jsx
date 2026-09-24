@@ -190,6 +190,8 @@ function ResumeEdit() {
 
   const [resumeId, setResumeId] = useState(null);
   const [title, setTitle] = useState("");
+  const [sourceFile, setSourceFile] = useState("");
+  const [sourcePreviewUrl, setSourcePreviewUrl] = useState("");
 
   const [content, setContent] = useState(emptyResumeContent);
 
@@ -235,6 +237,7 @@ function ResumeEdit() {
 
         setResumeId(found.id);
         setTitle(found.title);
+        setSourceFile("");
         setContent({
           ...emptyResumeContent,
           ...(found.content || {}),
@@ -252,6 +255,7 @@ function ResumeEdit() {
 
         setResumeId(data.id);
         setTitle(data.title);
+        setSourceFile(data.source_file || "");
         setContent({
           ...emptyResumeContent,
           ...(data.content || {}),
@@ -278,6 +282,40 @@ function ResumeEdit() {
   useEffect(() => {
     loadResume();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type, id]);
+
+  useEffect(() => {
+    let objectUrl = "";
+
+    const loadSourcePreview = async () => {
+      if (type !== "uploaded") {
+        setSourcePreviewUrl("");
+        return;
+      }
+
+      try {
+        const response = await api.get(
+          `/resumes/${id}/download/`,
+          { responseType: "blob" }
+        );
+
+        objectUrl = window.URL.createObjectURL(
+          response.data
+        );
+        setSourcePreviewUrl(objectUrl);
+      } catch (err) {
+        console.error("Failed to load source resume preview", err);
+        setSourcePreviewUrl("");
+      }
+    };
+
+    loadSourcePreview();
+
+    return () => {
+      if (objectUrl) {
+        window.URL.revokeObjectURL(objectUrl);
+      }
+    };
   }, [type, id]);
 
   const handleSave = async () => {
@@ -752,10 +790,57 @@ function ResumeEdit() {
 
   const renderResumePreview = () => {
     const personal = content.personal || {};
-    const skills = Object.values(content.skills || {}).flat();
+    const skillEntries = Object.entries(content.skills || {});
+    const skills = skillEntries.flatMap(([, values]) => values || []);
 
     return (
       <aside className="ed-preview-panel">
+        {type === "uploaded" && sourceFile && (
+          <div className="ed-source-preview">
+            <div className="ed-source-preview-heading">
+              <div>
+                <h2>Original Resume</h2>
+                <p>Uploaded document preview</p>
+              </div>
+
+              <a
+                className="ed-btn ed-btn-outline"
+                href={sourceFile}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open
+              </a>
+            </div>
+
+            {sourceFile.toLowerCase().includes(".pdf") && sourcePreviewUrl ? (
+              <iframe
+                className="ed-source-preview-frame"
+                src={`${sourcePreviewUrl}#toolbar=0&view=FitH`}
+                title="Original uploaded resume"
+              />
+            ) : sourceFile.toLowerCase().includes(".pdf") ? (
+              <div className="ed-source-preview-docx">
+                <p>Loading the original resume preview...</p>
+              </div>
+            ) : (
+              <div className="ed-source-preview-docx">
+                <p>
+                  The original DOCX file cannot be rendered directly in the browser.
+                </p>
+                <a href={sourceFile} target="_blank" rel="noreferrer">
+                  Download the original resume
+                </a>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="ed-live-preview-heading">
+          <h2>Live Edited Preview</h2>
+          <p>Reflects the fields you are editing below.</p>
+        </div>
+
         <div className="ed-preview-card">
           <div className="ed-preview-header">
             <h2>{personal.name || "Your Name"}</h2>
@@ -769,25 +854,54 @@ function ResumeEdit() {
           </div>
 
           {content.summary && (
-            <div className="ed-preview-section">
+            <div className="ed-preview-section ed-preview-summary">
               <h3>Professional Summary</h3>
               <p>{content.summary}</p>
             </div>
           )}
 
+          {(content.publications || []).length > 0 && (
+            <div className="ed-preview-section ed-preview-publications">
+              <h3>Publications</h3>
+              {content.publications.map((item, index) => (
+                <div className="ed-preview-item" key={index}>
+                  <p>
+                    {item.authors && `${item.authors}. `}
+                    {item.title && <strong>{item.title}.</strong>}
+                    {item.venue && ` ${item.venue}.`}
+                    {item.date && ` ${item.date}.`}
+                    {item.url && (
+                      <>
+                        {" "}
+                        <a href={item.url} target="_blank" rel="noreferrer">
+                          {item.url}
+                        </a>
+                      </>
+                    )}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
           {skills.length > 0 && (
-            <div className="ed-preview-section">
+            <div className="ed-preview-section ed-preview-skills">
               <h3>Skills</h3>
               <div className="ed-preview-tags">
-                {skills.map((skill, index) => (
-                  <span key={`${skill}-${index}`}>{skill}</span>
+                {skillEntries.map(([category, values]) => (
+                  <div className="ed-preview-skill-row" key={category}>
+                    <span className="ed-preview-skill-category">
+                      {category}
+                    </span>
+                    <span>{(values || []).join(", ")}</span>
+                  </div>
                 ))}
               </div>
             </div>
           )}
 
           {(content.experience || []).length > 0 && (
-            <div className="ed-preview-section">
+            <div className="ed-preview-section ed-preview-experience">
               <h3>Experience</h3>
               {content.experience.map((item, index) => (
                 <div className="ed-preview-item" key={index}>
@@ -816,18 +930,16 @@ function ResumeEdit() {
           )}
 
           {(content.projects || []).length > 0 && (
-            <div className="ed-preview-section">
+            <div className="ed-preview-section ed-preview-projects">
               <h3>Projects</h3>
               {content.projects.map((item, index) => (
                 <div className="ed-preview-item" key={index}>
                   <strong>{item.name || "Project"}</strong>
                   {item.description && <p>{item.description}</p>}
                   {(item.technologies || []).length > 0 && (
-                    <div className="ed-preview-tags">
-                      {item.technologies.map((tech, techIndex) => (
-                        <span key={`${tech}-${techIndex}`}>{tech}</span>
-                      ))}
-                    </div>
+                    <p className="ed-preview-project-tech">
+                      Technologies: {item.technologies.join(", ")}
+                    </p>
                   )}
                 </div>
               ))}
@@ -835,7 +947,7 @@ function ResumeEdit() {
           )}
 
           {(content.education || []).length > 0 && (
-            <div className="ed-preview-section">
+            <div className="ed-preview-section ed-preview-education">
               <h3>Education</h3>
               {content.education.map((item, index) => (
                 <div className="ed-preview-item" key={index}>
@@ -850,7 +962,7 @@ function ResumeEdit() {
           )}
 
           {(content.certifications || []).length > 0 && (
-            <div className="ed-preview-section">
+            <div className="ed-preview-section ed-preview-certifications">
               <h3>Certifications</h3>
               {content.certifications.map((item, index) => (
                 <div className="ed-preview-item" key={index}>
@@ -865,7 +977,8 @@ function ResumeEdit() {
             !(content.experience || []).length &&
             !(content.projects || []).length &&
             !(content.education || []).length &&
-            !(content.certifications || []).length && (
+            !(content.certifications || []).length &&
+            !(content.publications || []).length && (
               <p className="ed-preview-empty">
                 Start editing to see your resume preview here.
               </p>

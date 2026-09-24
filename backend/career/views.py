@@ -9,6 +9,12 @@ from rest_framework.views import APIView
 from resumes.models import Resume, ResumeIntelligence
 from resumes.serializers import ResumeIntelligenceSerializer
 
+from resume_builder.models import GeneratedResume
+from resume_builder.services.resume_text import (
+    generated_resume_to_intelligence,
+    generated_resume_to_text,
+)
+
 from rag.services.vector_store import load_resume_vector_store
 
 from agents.services.agent_stream import stream_career_analysis
@@ -123,43 +129,89 @@ class CareerAnalysisStreamView(APIView):
             "resume_id"
         ]
 
+        resume_type = serializer.validated_data.get(
+            "resume_type",
+            "uploaded",
+        )
+
         job_description = serializer.validated_data[
             "job_description"
         ]
 
-        try:
-            resume = Resume.objects.get(
-                id=resume_id,
-                user=request.user,
+        if resume_type == "generated":
+            try:
+                generated = GeneratedResume.objects.get(
+                    id=resume_id,
+                    user=request.user,
+                )
+
+            except GeneratedResume.DoesNotExist:
+                return Response(
+                    {
+                        "error": "Generated resume not found."
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            resume_context = generated_resume_to_text(
+                generated.content
             )
 
-        except Resume.DoesNotExist:
-            return Response(
-                {
-                    "error": "Resume not found."
-                },
-                status=status.HTTP_404_NOT_FOUND,
+            if not resume_context:
+                return Response(
+                    {
+                        "error": (
+                            "Generated resume has no "
+                            "usable content. Please edit it "
+                            "before running career analysis."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            resume_intelligence = (
+                generated_resume_to_intelligence(
+                    generated.content
+                )
             )
+            resume = generated.source_resume
+            resume_title = generated.title
 
-        try:
-            resume.intelligence
+        else:
+            try:
+                resume = Resume.objects.get(
+                    id=resume_id,
+                    user=request.user,
+                )
 
-        except ResumeIntelligence.DoesNotExist:
-            return Response(
-                {
-                    "error": (
-                        "Resume intelligence has not been generated yet. "
-                        "Please generate it before running career analysis."
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            except Resume.DoesNotExist:
+                return Response(
+                    {
+                        "error": "Resume not found."
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
 
-        resume_intelligence = ResumeIntelligenceSerializer(
-            resume.intelligence
-        ).data
+            try:
+                resume.intelligence
 
-        resume_context = resume.extracted_text
+            except ResumeIntelligence.DoesNotExist:
+                return Response(
+                    {
+                        "error": (
+                            "Resume intelligence has not been generated yet. "
+                            "Please generate it before running career analysis."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            resume_intelligence = ResumeIntelligenceSerializer(
+                resume.intelligence
+            ).data
+
+            resume_context = resume.extracted_text
+            resume_title = resume.title
 
         if not resume_context or not resume_context.strip():
             return Response(
@@ -295,6 +347,8 @@ class CareerAnalysisStreamView(APIView):
                 analysis = CareerAnalysis.objects.create(
                     user=request.user,
                     resume=resume,
+                    resume_title=resume_title,
+                    resume_context=resume_context,
                     job_description=job_description,
                     resume_intelligence=final_result[
                         "resume_intelligence"
@@ -472,9 +526,12 @@ class CareerDashboardView(APIView):
                     "resume_id": analysis.resume_id,
 
                     "resume_title": (
-                        analysis.resume.title
-                        if analysis.resume
-                        else None
+                        analysis.resume_title
+                        or (
+                            analysis.resume.title
+                            if analysis.resume
+                            else None
+                        )
                     ),
 
                     "job_description":
@@ -553,7 +610,12 @@ class InterviewAnswerEvaluationView(APIView):
 
         try:
             resume_context = (
-                analysis.resume.extracted_text
+                analysis.resume_context
+                or (
+                    analysis.resume.extracted_text
+                    if analysis.resume
+                    else ""
+                )
                 or ""
             )
 

@@ -83,15 +83,48 @@ function CareerAnalysis() {
   useEffect(() => {
     const loadResumes = async () => {
       try {
-        const response = await api.get("/resumes/");
+        const [uploadedResponse, generatedResponse] =
+          await Promise.all([
+            api.get("/resumes/"),
+            api.get("/resume-builder/resumes/"),
+          ]);
 
-        setResumes(response.data);
+        const uploaded = uploadedResponse.data.map(
+          (resume) => ({
+            ...resume,
+            type: "uploaded",
+            value: `uploaded:${resume.id}`,
+            label: resume.title,
+          })
+        );
 
-        if (
-          response.data.length > 0 &&
-          !location.state?.resumeId
-        ) {
-          setResumeId(String(response.data[0].id));
+        const generated = generatedResponse.data
+          .filter(
+            (resume) =>
+              resume.content &&
+              Object.keys(resume.content).length > 0
+          )
+          .map((resume) => ({
+            ...resume,
+            type: "generated",
+            value: `generated:${resume.id}`,
+            label: resume.title,
+          }));
+
+        const combined = [...uploaded, ...generated];
+
+        setResumes(combined);
+
+        const incomingId = location.state?.resumeId;
+
+        if (incomingId) {
+          setResumeId(
+            String(incomingId).includes(":")
+              ? String(incomingId)
+              : `uploaded:${incomingId}`
+          );
+        } else if (combined.length > 0) {
+          setResumeId(combined[0].value);
         }
       } catch (err) {
         setError("Unable to load resumes.");
@@ -126,6 +159,9 @@ function CareerAnalysis() {
 
       const token = localStorage.getItem("access_token");
 
+      const [resumeType, selectedResumeId] =
+        resumeId.split(":");
+
       const response = await fetch(
         "http://127.0.0.1:8000/api/career/analyze-stream/",
         {
@@ -135,7 +171,9 @@ function CareerAnalysis() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            resume_id: Number(resumeId),
+            resume_id: Number(selectedResumeId),
+            resume_type:
+              resumeType || "uploaded",
             job_description: jobDescription,
           }),
         }
@@ -335,14 +373,49 @@ function CareerAnalysis() {
                     No resumes available
                   </option>
                 ) : (
-                  resumes.map((resume) => (
-                    <option
-                      key={resume.id}
-                      value={resume.id}
-                    >
-                      {resume.title}
-                    </option>
-                  ))
+                  <>
+                    {resumes.some(
+                      (resume) =>
+                        resume.type === "uploaded"
+                    ) && (
+                      <optgroup label="Uploaded Resumes">
+                        {resumes
+                          .filter(
+                            (resume) =>
+                              resume.type === "uploaded"
+                          )
+                          .map((resume) => (
+                            <option
+                              key={resume.value}
+                              value={resume.value}
+                            >
+                              {resume.label}
+                            </option>
+                          ))}
+                      </optgroup>
+                    )}
+
+                    {resumes.some(
+                      (resume) =>
+                        resume.type === "generated"
+                    ) && (
+                      <optgroup label="Generated Resumes">
+                        {resumes
+                          .filter(
+                            (resume) =>
+                              resume.type === "generated"
+                          )
+                          .map((resume) => (
+                            <option
+                              key={resume.value}
+                              value={resume.value}
+                            >
+                              {resume.label}
+                            </option>
+                          ))}
+                      </optgroup>
+                    )}
+                  </>
                 )}
               </select>
             </div>
