@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     ResumeDetailView,
+    ResumeDownloadView,
     ResumeListCreateView,
     SetActiveResumeView,
     ResumeIntelligenceView,
@@ -20,6 +21,12 @@ urlpatterns = [
         "<int:pk>/",
         ResumeDetailView.as_view(),
         name="resume-detail",
+    ),
+
+    path(
+        "<int:pk>/download/",
+        ResumeDownloadView.as_view(),
+        name="resume-download",
     ),
 
     path(

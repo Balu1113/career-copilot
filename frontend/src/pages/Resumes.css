@@ -43,10 +43,18 @@
 
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .resume-card.active {
   border-color: #6366f1;
+}
+
+.resume-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .resume-icon {
@@ -68,6 +76,8 @@
 
 .resume-info h3 {
   margin: 0 0 5px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .resume-info p {
@@ -76,6 +86,8 @@
   color: #64748b;
 
   font-size: 13px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .active-badge {
@@ -94,7 +106,7 @@
   margin-top: auto;
 
   display: flex;
-
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -110,16 +122,121 @@
   border-radius: 7px;
 
   font-size: 13px;
+  flex: 1 1 120px;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 
-.resume-actions .delete-button {
-  background: #fef2f2;
+.resumes-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
 
-  color: #dc2626;
+.resume-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  background: white;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 650;
+}
 
+.resume-tab:hover {
+  border-color: #c7c9f7;
+}
+
+.resume-tab.active {
+  color: #4f46e5;
+  background: #eef2ff;
+  border-color: #c7c9f7;
+}
+
+.tab-count {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.resume-tab.active .tab-count {
+  background: #dfe3ff;
+  color: #4f46e5;
+}
+
+.resume-icon.generated {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+.status-badge {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: capitalize;
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.status-badge.status-completed {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.status-badge.status-generating {
+  background: #fef9c3;
+  color: #a16207;
+}
+
+.status-badge.status-failed {
+  background: #fff1f2;
+  color: #be123c;
+}
+
+.status-badge.status-draft {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.resume-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.resume-actions .edit-button {
+  background: #eef2ff;
+  color: #4f46e5;
   display: flex;
   align-items: center;
   gap: 5px;
+}
+
+.resume-actions .download-button {
+  background: #ecfdf5;
+  color: #047857;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.error-message {
+  color: #be123c;
 }
 
 .empty-state {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Brain,
+  Briefcase,
   Calendar,
   Loader2,
 } from "lucide-react";
@@ -152,6 +153,21 @@ function CareerHistoryDetail() {
           </div>
 
         </div>
+        
+        <button
+          className="career-add-application-btn"
+          onClick={() =>
+            navigate("/applications", {
+              state: {
+                fromCareerAnalysis: true,
+                analysis,
+              },
+            })
+          }
+        >
+          <Briefcase size={17} />
+          Add to Applications
+        </button>
 
 
         <div className="career-saved-jd">
@@ -214,6 +230,12 @@ function CareerHistoryDetail() {
             }
           />
 
+          <ResultObject
+            title="Interview Preparation"
+            data={analysis.interview_preparation}
+            analysis={analysis}
+          />
+
         </section>
 
       </main>
@@ -226,7 +248,7 @@ function CareerHistoryDetail() {
    RESULT OBJECT
 ===================================================== */
 
-function ResultObject({ title, data }) {
+function ResultObject({ title, data, analysis }) {
   if (!data) {
     return null;
   }
@@ -247,6 +269,15 @@ function ResultObject({ title, data }) {
     return (
       <CareerRecommendationsCard
         data={data}
+      />
+    );
+  }
+
+  if (title === "Interview Preparation") {
+    return (
+      <InterviewPreparationCard
+        data={data}
+        analysis={analysis}
       />
     );
   }
@@ -464,6 +495,144 @@ function SkillGapCard({ data }) {
 }
 
 
+
+function InterviewPreparationCard({ data, analysis }) {
+  const navigate = useNavigate();
+
+  if (!data) {
+    return null;
+  }
+
+  const hasQuestions =
+    data.technical_questions?.length > 0 ||
+    data.project_questions?.length > 0 ||
+    data.gap_based_questions?.length > 0 ||
+    data.behavioral_questions?.length > 0;
+
+  const hasTopics =
+    data.preparation_topics?.length > 0;
+
+  if (!hasQuestions && !hasTopics) {
+    return null;
+  }
+
+  return (
+    <div className="career-result-card">
+      <h3>Interview Preparation</h3>
+
+      <InterviewQuestionSection
+        title="Technical Questions"
+        questions={data.technical_questions}
+      />
+
+      <InterviewQuestionSection
+        title="Project Questions"
+        questions={data.project_questions}
+      />
+
+      <InterviewQuestionSection
+        title="Gap-Based Questions"
+        questions={data.gap_based_questions}
+      />
+
+      <InterviewQuestionSection
+        title="Behavioral Questions"
+        questions={data.behavioral_questions}
+      />
+
+      {hasTopics && (
+        <div className="career-result-item">
+          <span className="result-key">
+            Preparation Topics
+          </span>
+
+          <div className="result-tags">
+            {data.preparation_topics.map(
+              (topic, index) => (
+                <span
+                  className="result-tag"
+                  key={index}
+                >
+                  {topic}
+                </span>
+              )
+            )}
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={() =>
+          navigate("/interview-practice", {
+            state: {
+              analysis,
+            },
+          })
+        }
+      >
+        Practice Interview
+      </button>
+    </div>
+  );
+}
+
+function InterviewQuestionSection({
+  title,
+  questions = [],
+}) {
+  if (!questions || questions.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="career-result-item">
+      <span className="result-key">
+        {title}
+      </span>
+
+      <div className="interview-question-list">
+        {questions.map((item, index) => (
+          <div
+            className="interview-question-card"
+            key={index}
+          >
+            <div className="interview-question-header">
+              <span className="recommendation-number">
+                {index + 1}
+              </span>
+
+              <div className="interview-question-meta">
+                <span className="result-tag">
+                  {item.category}
+                </span>
+
+                <span
+                  className={`priority-badge ${String(
+                    item.difficulty
+                  ).toLowerCase()}`}
+                >
+                  {item.difficulty}
+                </span>
+              </div>
+            </div>
+
+            <div className="interview-question-content">
+              <strong>{item.question}</strong>
+
+              {item.reason && (
+                <p>
+                  <strong>Why:</strong>{" "}
+                  {item.reason}
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function CareerRecommendationsCard({ data }) {
   return (
     <div className="career-result-card">
@@ -504,9 +673,15 @@ function ResultSection({
   items = [],
   type = "list",
 }) {
+  const formatTagItem = (item) => {
+    if (typeof item === "object" && item !== null) {
+      return item.name || item.skill || item.topic || item.title || JSON.stringify(item);
+    }
+    return item;
+  };
+
   return (
     <div className="career-result-item">
-
       <span className="result-key">
         {title}
       </span>
@@ -522,7 +697,7 @@ function ResultSection({
               className="result-tag"
               key={index}
             >
-              {item}
+              {formatTagItem(item)}
             </span>
           ))}
         </div>
@@ -533,7 +708,7 @@ function ResultSection({
               className="result-tag success"
               key={index}
             >
-              ✓ {item}
+              ✓ {formatTagItem(item)}
             </span>
           ))}
         </div>
@@ -544,7 +719,7 @@ function ResultSection({
               className="result-tag danger"
               key={index}
             >
-              {item}
+              {formatTagItem(item)}
             </span>
           ))}
         </div>
@@ -555,7 +730,7 @@ function ResultSection({
               className="result-tag warning"
               key={index}
             >
-              {item}
+              {formatTagItem(item)}
             </span>
           ))}
         </div>
@@ -570,7 +745,26 @@ function ResultSection({
                 {index + 1}
               </div>
 
-              <p>{item}</p>
+              <div style={{ flex: 1 }}>
+                {typeof item === "object" && item !== null ? (
+                  <div>
+                    <strong>{item.name || item.title || "Project"}</strong>
+                    {item.description && <p style={{ marginTop: '0.25rem', marginBottom: '0.25rem' }}>{item.description}</p>}
+                    {item.purpose && <p style={{ fontSize: '0.9rem', opacity: 0.8, marginTop: '0.25rem' }}><em>Purpose: {item.purpose}</em></p>}
+                    {Array.isArray(item.technologies) && item.technologies.length > 0 && (
+                      <div className="result-tags" style={{ marginTop: '0.5rem' }}>
+                        {item.technologies.map((tech, idx) => (
+                          <span key={idx} className="result-tag">
+                            {typeof tech === "object" ? (tech.name || JSON.stringify(tech)) : tech}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p>{item}</p>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -585,7 +779,28 @@ function ResultSection({
                 →
               </span>
 
-              <p>{item}</p>
+              <div style={{ flex: 1 }}>
+                {typeof item === "object" && item !== null ? (
+                  <div>
+                    {item.topic && <strong>{item.topic}</strong>}
+                    {item.question && <strong>{item.question}</strong>}
+                    {item.name && <strong>{item.name}</strong>}
+                    {item.priority && (
+                      <span className={`result-tag ${String(item.priority).toLowerCase() === 'high' ? 'danger' : 'warning'}`} style={{ marginLeft: '0.5rem' }}>
+                        {item.priority}
+                      </span>
+                    )}
+                    {item.reason && <p style={{ marginTop: '0.25rem' }}>{item.reason}</p>}
+                    {item.why && <p style={{ marginTop: '0.25rem', fontSize: '0.9rem', opacity: 0.8 }}><em>Why: {item.why}</em></p>}
+                    {item.description && <p style={{ marginTop: '0.25rem' }}>{item.description}</p>}
+                    {!item.topic && !item.question && !item.name && !item.reason && !item.why && !item.description && (
+                      <p>{formatObject(item)}</p>
+                    )}
+                  </div>
+                ) : (
+                  <p>{item}</p>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -600,7 +815,22 @@ function ResultSection({
                 {index + 1}
               </span>
 
-              <p>{item}</p>
+              <div style={{ flex: 1 }}>
+                {typeof item === "object" && item !== null ? (
+                  <div>
+                    {item.step && <p><strong>{item.step}</strong></p>}
+                    {item.action && <p>{item.action}</p>}
+                    {item.priority && (
+                      <span className="result-tag warning" style={{ marginTop: '0.25rem' }}>
+                        {item.priority}
+                      </span>
+                    )}
+                    {!item.step && !item.action && <p>{formatObject(item)}</p>}
+                  </div>
+                ) : (
+                  <p>{item}</p>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -608,7 +838,9 @@ function ResultSection({
         <ul>
           {items.map((item, index) => (
             <li key={index}>
-              {item}
+              {typeof item === "object" && item !== null
+                ? formatObject(item)
+                : item}
             </li>
           ))}
         </ul>
@@ -618,5 +850,28 @@ function ResultSection({
   );
 }
 
+function formatObject(object) {
+  return Object.entries(object)
+    .map(([key, value]) => {
+      const formattedValue =
+        Array.isArray(value)
+          ? value.join(", ")
+          : typeof value === "object" &&
+            value !== null
+          ? JSON.stringify(value)
+          : value;
+
+      return `${formatKey(key)}: ${formattedValue}`;
+    })
+    .join(" • ");
+}
+
+function formatKey(key) {
+  return key
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) =>
+      character.toUpperCase()
+    );
+}
 
 export default CareerHistoryDetail;

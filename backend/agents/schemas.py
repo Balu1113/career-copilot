@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class JobRequirements(BaseModel):
@@ -7,6 +7,20 @@ class JobRequirements(BaseModel):
     responsibilities: list[str]
     experience_requirements: list[str]
     education_requirements: list[str]
+    requirement_registry: list["RequirementRegistryItem"] = Field(default_factory=list)
+
+
+class RequirementRegistryItem(BaseModel):
+    display_name: str
+    canonical_group: str
+    # "technology"   — a named product, language, framework, cloud service, or tool
+    # "architecture" — an architectural pattern or structural approach (e.g. Microservices)
+    # "capability"   — a cross-cutting skill or practice with no single canonical product
+    #                  (e.g. Vector databases, CI/CD, DevOps, RAG, Prompt Engineering)
+    requirement_type: str = "technology"
+    source: str
+    sources: list[str] = Field(default_factory=list)
+    original_names: list[str] = Field(default_factory=list)
 
 
 class MatchingExperience(BaseModel):
@@ -35,11 +49,21 @@ class PriorityGap(BaseModel):
     reason: str
 
 
+class MergedRequirement(BaseModel):
+    canonical_group: str
+    display_name: str
+    original_names: list[str]
+    source: str
+    sources: list[str]
+
+
 class SkillGapAnalysis(BaseModel):
     missing_skills: list[SkillGapItem]
     partial_skills: list[SkillGapItem]
     priority_gaps: list[PriorityGap]
     explanation: str
+    merged_requirements: list[MergedRequirement] = Field(default_factory=list)
+
 
 class RecommendedTopic(BaseModel):
     topic: str
@@ -50,6 +74,8 @@ class RecommendedTopic(BaseModel):
 
 class RecommendedProject(BaseModel):
     name: str
+    purpose: str
+    gaps_addressed: list[str]
     description: str
     technologies: list[str]
 
@@ -133,3 +159,11 @@ class ResumeIntelligence(BaseModel):
     experience: list[Experience]
     education: list[Education]
     certifications: list[Certification]
+
+
+class InterviewAnswerEvaluation(BaseModel):
+    score: int
+    strengths: list[str]
+    missing_points: list[str]
+    improvement_suggestions: list[str]
+    ideal_answer_points: list[str]

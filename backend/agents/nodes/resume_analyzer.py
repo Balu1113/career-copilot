@@ -6,81 +6,112 @@ from agents.services.skill_matching import (
     has_direct_evidence,
 )
 
+
 def flatten_resume_evidence(resume_intelligence):
-   """
-   Collect all explicit resume evidence into one normalized set.
+    """
+    Collect all explicit resume evidence into one normalized set.
 
-   This is used ONLY for deterministic matching validation.
-   """
+    This is used ONLY for deterministic matching validation.
+    """
 
-   evidence = set()
+    evidence = set()
 
-   def add_values(values):
-      if not values:
+    def add_values(values):
+        if not values:
             return
 
-      if isinstance(values, str):
+        if isinstance(values, str):
             values = [values]
 
-      if isinstance(values, list):
+        if isinstance(values, list):
             for value in values:
-               if isinstance(value, str):
-                  normalized = canonicalize(value)
-                  if normalized:
+                if isinstance(value, str):
+                    normalized = canonicalize(value)
+                    if normalized:
                         evidence.add(normalized)
 
-   add_values(resume_intelligence.get("skills", []))
-   add_values(resume_intelligence.get("programming_languages", []))
-   add_values(resume_intelligence.get("frameworks", []))
-   add_values(resume_intelligence.get("tools_and_technologies", []))
-   add_values(resume_intelligence.get("ai_ml_technologies", []))
+    add_values(resume_intelligence.get("skills", []))
+    add_values(resume_intelligence.get("programming_languages", []))
+    add_values(resume_intelligence.get("frameworks", []))
+    add_values(resume_intelligence.get("tools_and_technologies", []))
+    add_values(resume_intelligence.get("ai_ml_technologies", []))
 
-   # Project evidence
-   projects = resume_intelligence.get("projects", [])
+    # Project evidence
+    projects = resume_intelligence.get("projects", [])
 
-   if isinstance(projects, list):
-      for project in projects:
+    if isinstance(projects, list):
+        for project in projects:
 
             if isinstance(project, dict):
-               add_values(project.get("technologies", []))
-               add_values(project.get("skills", []))
+                add_values(project.get("technologies", []))
+                add_values(project.get("skills", []))
 
-   # Professional experience evidence
-   experience = resume_intelligence.get("experience", [])
+    # Professional experience evidence
+    experience = resume_intelligence.get("experience", [])
 
-   if isinstance(experience, list):
-      for entry in experience:
+    if isinstance(experience, list):
+        for entry in experience:
 
             if not isinstance(entry, dict):
-               continue
+                continue
 
             add_values(entry.get("technologies", []))
             add_values(entry.get("skills", []))
 
-   return evidence
+    return evidence
 
 
 def extract_job_requirements(job_requirements):
-   """
-   Extract all explicit required/preferred skills from Job Analyzer.
-   """
+    """
+    Extract the authoritative requirement registry from Job Analyzer.
 
-   requirements = []
+    The registry includes explicit skills from required/preferred lists,
+    technical responsibilities, and technology mentions elsewhere in the JD.
+    Fall back to the legacy lists for older job-analysis records.
+    """
 
-   for key in ["required_skills", "preferred_skills"]:
+    requirement_items = []
+    registry = job_requirements.get("requirement_registry", [])
 
-      values = job_requirements.get(key, [])
+    if isinstance(registry, list):
+        for item in registry:
+            if not isinstance(item, dict):
+                continue
 
-      if isinstance(values, str):
-         values = [values]
+            display_name = item.get("display_name") or item.get("skill")
+            if isinstance(display_name, str) and display_name.strip():
+                requirement_items.append((display_name.strip(), item))
 
-      if isinstance(values, list):
-         requirements.extend(
-               value for value in values
-               if isinstance(value, str)
-         )
+    if requirement_items:
+        deduplicated = []
+        seen = set()
 
-   return requirements
+        for requirement, item in requirement_items:
+            canonical = (
+                (item.get("canonical_group") if isinstance(item, dict) else None)
+                or canonicalize(requirement)
+                or requirement.lower()
+            )
+
+            if canonical in seen:
+                continue
+
+            seen.add(canonical)
+            deduplicated.append(requirement)
+
+        return deduplicated
+
+    requirements = []
+    for key in ["required_skills", "preferred_skills"]:
+        values = job_requirements.get(key, [])
+
+        if isinstance(values, str):
+            values = [values]
+
+        if isinstance(values, list):
+            requirements.extend(value for value in values if isinstance(value, str))
+
+    return requirements
 
 
 def validate_matching_skills(
@@ -114,18 +145,19 @@ def validate_matching_skills(
 
     return validated
 
+
 def resume_analyzer_node(state):
 
-   resume_intelligence = state.get("resume_intelligence", {})
-   job_requirements = state.get("job_requirements", {})
+    resume_intelligence = state.get("resume_intelligence", {})
+    job_requirements = state.get("job_requirements", {})
 
-   if not resume_intelligence:
-      raise ValueError("Resume Intelligence data is empty.")
+    if not resume_intelligence:
+        raise ValueError("Resume Intelligence data is empty.")
 
-   if not job_requirements:
-      raise ValueError("Job requirements are empty.")
+    if not job_requirements:
+        raise ValueError("Job requirements are empty.")
 
-   system_prompt = """
+    system_prompt = """
 You are a professional AI resume analyzer.
 
 Your task is to compare a candidate's structured resume intelligence
@@ -177,7 +209,9 @@ Examples:
 
 React = ReactJS = React.js
 GenAI = Generative AI
-AI agents = Agentic AI
+AI agents and Agentic AI are related concepts, but do not treat them
+as exact equivalents unless the resume explicitly demonstrates the
+specific terminology.
 RAG = Retrieval-Augmented Generation
 LLM = Large Language Model
 Version control = Source control
@@ -244,7 +278,7 @@ Return empty arrays where appropriate.
 Return ONLY valid JSON.
 """
 
-   user_prompt = f"""
+    user_prompt = f"""
 JOB REQUIREMENTS
 ================
 
@@ -350,23 +384,21 @@ Python does not prove:
 Return only explicitly supported matches.
 """
 
-   result = generate_structured_output(
-      system_prompt=system_prompt,
-      user_prompt=user_prompt,
-      schema=ResumeAnalysis,
-   )
+    result = generate_structured_output(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        schema=ResumeAnalysis,
+    )
 
-   result_data = result.model_dump()
+    result_data = result.model_dump()
 
-   # ==============================================================
-   # DETERMINISTIC MATCHING VALIDATION
-   # ==============================================================
+    # ==============================================================
+    # DETERMINISTIC MATCHING VALIDATION
+    # ==============================================================
 
-   result_data["matching_skills"] = validate_matching_skills(
-      job_requirements=job_requirements,
-      resume_intelligence=resume_intelligence,
-   )
+    result_data["matching_skills"] = validate_matching_skills(
+        job_requirements=job_requirements,
+        resume_intelligence=resume_intelligence,
+    )
 
-   return {
-      "resume_analysis": result_data
-   }
+    return {"resume_analysis": result_data}

@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import {
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+import {
   Brain,
   CheckCircle2,
   FileText,
@@ -57,11 +61,19 @@ const stages = [
 ];
 
 function CareerAnalysis() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [resumes, setResumes] = useState([]);
-  const [resumeId, setResumeId] = useState("");
-  const [jobDescription, setJobDescription] = useState("");
+  const [resumeId, setResumeId] = useState(
+    location.state?.resumeId || ""
+  );
+
+  const [jobDescription, setJobDescription] = useState(
+    location.state?.jobDescription || ""
+  );
 
   const [result, setResult] = useState(null);
+  const [analysisId, setAnalysisId] = useState(null);
   const [currentNode, setCurrentNode] = useState("");
   const [completedNodes, setCompletedNodes] = useState([]);
   const [generating, setGenerating] = useState(false);
@@ -75,7 +87,10 @@ function CareerAnalysis() {
 
         setResumes(response.data);
 
-        if (response.data.length > 0) {
+        if (
+          response.data.length > 0 &&
+          !location.state?.resumeId
+        ) {
           setResumeId(String(response.data[0].id));
         }
       } catch (err) {
@@ -104,6 +119,7 @@ function CareerAnalysis() {
     try {
       setGenerating(true);
       setResult(null);
+      setAnalysisId(null);
       setError("");
       setCurrentNode("");
       setCompletedNodes([]);
@@ -243,6 +259,7 @@ function CareerAnalysis() {
           }
 
           if (data.type === "completed") {
+            setAnalysisId(data.analysis_id);
             setGenerating(false);
           }
 
@@ -529,6 +546,8 @@ function CareerAnalysis() {
             <ResultObject
               title="Interview Preparation"
               data={result.interview_preparation}
+              analysis={result}
+              analysisId={analysisId}
             />
           </section>
         )}
@@ -537,7 +556,7 @@ function CareerAnalysis() {
   );
 }
 
-function ResultObject({ title, data }) {
+function ResultObject({ title, data, analysis, analysisId }) {
   if (!data) {
     return null;
   }
@@ -563,7 +582,13 @@ function ResultObject({ title, data }) {
   }
 
   if (title === "Interview Preparation") {
-    return <InterviewPreparationCard data={data} />;
+    return (
+      <InterviewPreparationCard
+        data={data}
+        analysis={analysis}
+        analysisId={analysisId}
+      />
+    );
   }
 
   return null;
@@ -1095,7 +1120,9 @@ function RecommendedProjects({ projects = [] }) {
 }
 
 
-function InterviewPreparationCard({ data }) {
+function InterviewPreparationCard({ data, analysis, analysisId }) {
+  const navigate = useNavigate();
+
   if (!data) {
     return null;
   }
@@ -1137,6 +1164,20 @@ function InterviewPreparationCard({ data }) {
         questions={data.behavioral_questions}
       />
 
+      <button
+        onClick={() =>
+          navigate("/interview-practice", {
+            state: {
+              analysis: {
+                ...analysis,
+                id: analysisId,
+              },
+            },
+          })
+        }
+      >
+        Practice Interview
+      </button>
       {hasTopics && (
         <div className="career-result-item">
           <span className="result-key">
@@ -1264,6 +1305,13 @@ function ResultSection({
   items = [],
   type = "list",
 }) {
+  const formatTagItem = (item) => {
+    if (typeof item === "object" && item !== null) {
+      return item.name || item.skill || item.topic || item.title || JSON.stringify(item);
+    }
+    return item;
+  };
+
   return (
     <div className="career-result-item">
       <span className="result-key">
@@ -1281,7 +1329,7 @@ function ResultSection({
               className="result-tag"
               key={index}
             >
-              {item}
+              {formatTagItem(item)}
             </span>
           ))}
         </div>
@@ -1292,7 +1340,7 @@ function ResultSection({
               className="result-tag success"
               key={index}
             >
-              ✓ {item}
+              ✓ {formatTagItem(item)}
             </span>
           ))}
         </div>
@@ -1303,7 +1351,7 @@ function ResultSection({
               className="result-tag danger"
               key={index}
             >
-              {item}
+              {formatTagItem(item)}
             </span>
           ))}
         </div>
@@ -1314,7 +1362,7 @@ function ResultSection({
               className="result-tag warning"
               key={index}
             >
-              {item}
+              {formatTagItem(item)}
             </span>
           ))}
         </div>
@@ -1329,7 +1377,26 @@ function ResultSection({
                 {index + 1}
               </div>
 
-              <p>{item}</p>
+              <div style={{ flex: 1 }}>
+                {typeof item === "object" && item !== null ? (
+                  <div>
+                    <strong>{item.name || item.title || "Project"}</strong>
+                    {item.description && <p style={{ marginTop: '0.25rem', marginBottom: '0.25rem' }}>{item.description}</p>}
+                    {item.purpose && <p style={{ fontSize: '0.9rem', opacity: 0.8, marginTop: '0.25rem' }}><em>Purpose: {item.purpose}</em></p>}
+                    {Array.isArray(item.technologies) && item.technologies.length > 0 && (
+                      <div className="result-tags" style={{ marginTop: '0.5rem' }}>
+                        {item.technologies.map((tech, idx) => (
+                          <span key={idx} className="result-tag">
+                            {typeof tech === "object" ? (tech.name || JSON.stringify(tech)) : tech}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p>{item}</p>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -1344,7 +1411,28 @@ function ResultSection({
                 →
               </span>
 
-              <p>{item}</p>
+              <div style={{ flex: 1 }}>
+                {typeof item === "object" && item !== null ? (
+                  <div>
+                    {item.topic && <strong>{item.topic}</strong>}
+                    {item.question && <strong>{item.question}</strong>}
+                    {item.name && <strong>{item.name}</strong>}
+                    {item.priority && (
+                      <span className={`result-tag ${String(item.priority).toLowerCase() === 'high' ? 'danger' : 'warning'}`} style={{ marginLeft: '0.5rem' }}>
+                        {item.priority}
+                      </span>
+                    )}
+                    {item.reason && <p style={{ marginTop: '0.25rem' }}>{item.reason}</p>}
+                    {item.why && <p style={{ marginTop: '0.25rem', fontSize: '0.9rem', opacity: 0.8 }}><em>Why: {item.why}</em></p>}
+                    {item.description && <p style={{ marginTop: '0.25rem' }}>{item.description}</p>}
+                    {!item.topic && !item.question && !item.name && !item.reason && !item.why && !item.description && (
+                      <p>{formatObject(item)}</p>
+                    )}
+                  </div>
+                ) : (
+                  <p>{item}</p>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -1359,7 +1447,22 @@ function ResultSection({
                 {index + 1}
               </span>
 
-              <p>{item}</p>
+              <div style={{ flex: 1 }}>
+                {typeof item === "object" && item !== null ? (
+                  <div>
+                    {item.step && <p><strong>{item.step}</strong></p>}
+                    {item.action && <p>{item.action}</p>}
+                    {item.priority && (
+                      <span className="result-tag warning" style={{ marginTop: '0.25rem' }}>
+                        {item.priority}
+                      </span>
+                    )}
+                    {!item.step && !item.action && <p>{formatObject(item)}</p>}
+                  </div>
+                ) : (
+                  <p>{item}</p>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -1367,8 +1470,7 @@ function ResultSection({
         <ul>
           {items.map((item, index) => (
             <li key={index}>
-              {typeof item === "object" &&
-              item !== null
+              {typeof item === "object" && item !== null
                 ? formatObject(item)
                 : item}
             </li>

@@ -2,6 +2,8 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from django.http import FileResponse
+
 from users.models import UserProfile
 
 from .models import Resume, ResumeIntelligence
@@ -87,6 +89,53 @@ class SetActiveResumeView(APIView):
             "message": "Active resume updated.",
             "active_resume_id": resume.id,
         })
+
+
+class ResumeDownloadView(APIView):
+    permission_classes = [
+        permissions.IsAuthenticated
+    ]
+
+    def get(self, request, pk):
+        try:
+            resume = Resume.objects.get(
+                id=pk,
+                user=request.user,
+            )
+        except Resume.DoesNotExist:
+            return Response(
+                {"error": "Resume not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not resume.file:
+            return Response(
+                {
+                    "error": "Resume file is not available."
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            filename = (
+                resume.file.name
+                .rsplit("/", 1)[-1]
+            )
+
+            file_handle = resume.file.open("rb")
+
+            return FileResponse(
+                file_handle,
+                as_attachment=True,
+                filename=filename,
+            )
+        except FileNotFoundError:
+            return Response(
+                {
+                    "error": "Resume file was not found."
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
 
 class ResumeIntelligenceView(APIView):

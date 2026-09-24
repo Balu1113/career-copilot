@@ -1,9 +1,4 @@
-import {
-  BrowserRouter,
-  Navigate,
-  Route,
-  Routes,
-} from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -18,21 +13,17 @@ import CareerAnalysis from "./pages/CareerAnalysis";
 import CareerHistory from "./pages/CareerHistory";
 import CareerHistoryDetail from "./pages/CareerHistoryDetail";
 import ResumeIntelligence from "./pages/ResumeIntelligence";
-function App() {
+import InterviewPractice from "./pages/InterviewPractice";
+import ResumeBuilder from "./pages/ResumeBuilder";
+import ResumeEdit from "./pages/ResumeEdit";
 
+function App() {
   return (
     <BrowserRouter>
-
       <Routes>
-
         <Route
           path="/"
-          element={
-            <Navigate
-              to="/dashboard"
-              replace
-            />
-          }
+          element={<Navigate to="/dashboard" replace />}
         />
 
         <Route
@@ -55,6 +46,7 @@ function App() {
             <ProtectedRoute>
               <div className="dashboard-layout">
                 <Sidebar />
+
                 <main className="dashboard-main">
                   <Resumes />
                 </main>
@@ -109,38 +101,73 @@ function App() {
         />
 
         <Route
-  path="/career-history"
-  element={
-    <ProtectedRoute>
-      <CareerHistory />
-    </ProtectedRoute>
-  }
-/>
+          path="/career-history"
+          element={
+            <ProtectedRoute>
+              <CareerHistory />
+            </ProtectedRoute>
+          }
+        />
 
-<Route
-  path="/career-history/:id"
-  element={
-    <ProtectedRoute>
-      <CareerHistoryDetail />
-    </ProtectedRoute>
-  }
-/>
+        <Route
+          path="/career-history/:id"
+          element={
+            <ProtectedRoute>
+              <CareerHistoryDetail />
+            </ProtectedRoute>
+          }
+        />
 
-<Route
-  path="/resume-intelligence"
-  element={
-    <ProtectedRoute>
-      <ResumeIntelligence />
-    </ProtectedRoute>
-  }
-/>
+        <Route
+          path="/resume-intelligence"
+          element={
+            <ProtectedRoute>
+              <ResumeIntelligence />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/interview-practice"
+          element={
+            <ProtectedRoute>
+              <InterviewPractice />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/resume-builder"
+          element={
+            <ProtectedRoute>
+              <div className="dashboard-layout">
+                <Sidebar />
+
+                <main className="dashboard-main">
+                  <ResumeBuilder />
+                </main>
+              </div>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/resumes/edit/:type/:id"
+          element={
+            <ProtectedRoute>
+              <div className="dashboard-layout">
+                <Sidebar />
+
+                <main className="dashboard-main">
+                  <ResumeEdit />
+                </main>
+              </div>
+            </ProtectedRoute>
+          }
+        />
       </Routes>
-
-      
-
     </BrowserRouter>
   );
 }
 
-
-export default App;
+export default App; 

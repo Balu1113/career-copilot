@@ -1,10 +1,9 @@
 from agents.schemas import InterviewPreparationPlan
 from agents.services.structured_llm import generate_structured_output
 from agents.services.skill_normalizer import (
-    normalize_skill,
     skill_matches,
 )
-import re
+from agents.services.skill_matching import canonicalize
 
 def _normalize(value):
     if not isinstance(value, str):
@@ -13,30 +12,6 @@ def _normalize(value):
     return " ".join(
         value.lower().strip().split()
     )
-
-def _canonical_skill(value):
-    """
-    Normalize equivalent skill terminology so that singular/plural
-    and common wording variations are treated consistently.
-    """
-
-    value = _normalize(value)
-
-    aliases = {
-        "microservice": "microservices",
-        "microservices architecture": "microservices",
-        "ci": "continuous integration",
-        "ci pipeline": "continuous integration",
-        "continuous integration pipeline": "continuous integration",
-        "build and deployment pipeline":
-            "automated build and deployment pipelines",
-        "build and deployment pipelines":
-            "automated build and deployment pipelines",
-        "asset and wealth management":
-            "asset and wealth management processes",
-    }
-
-    return aliases.get(value, value)
 
 def _contains_term(text, term):
     return skill_matches(
@@ -185,12 +160,8 @@ def _contains_unapproved_technology(
     allowed_terms,
 ):
     """
-    Prevent the LLM from introducing a specific technology,
-    platform, framework or tool that is not supported by the
-    supplied evidence.
-
-    The validation is evidence-based rather than relying on a
-    hardcoded technology list.
+    Return True when a question introduces a known
+    technology that is not present in the allowed vocabulary.
     """
 
     if not isinstance(question, str):
@@ -199,18 +170,46 @@ def _contains_unapproved_technology(
     if not isinstance(allowed_terms, list):
         return True
 
-    for term in allowed_terms:
+    # Known technology terms that should be checked when
+    # they appear in generated interview questions.
+    technology_terms = {
+        "docker",
+        "kubernetes",
+        "k8s",
+        "terraform",
+        "ansible",
+        "jenkins",
+        "github actions",
+        "gitlab ci",
+        "azure devops",
+        "aws",
+        "azure",
+        "gcp",
+        "kafka",
+        "airflow",
+        "spark",
+        "snowflake",
+        "elasticsearch",
+        "sqlalchemy",
+        "helm",
+        "prometheus",
+        "grafana",
+    }
 
-        if not isinstance(term, str):
+    normalized_allowed = {
+        _normalize(term)
+        for term in allowed_terms
+        if isinstance(term, str) and term.strip()
+    }
+
+    for technology in technology_terms:
+        if not skill_matches(question, technology):
             continue
 
-        term = term.strip()
+        normalized_technology = _normalize(technology)
 
-        if not term:
-            continue
-
-        if skill_matches(question, term):
-            continue
+        if normalized_technology not in normalized_allowed:
+            return True
 
     return False
 
@@ -639,12 +638,53 @@ def _build_fallback_technical_questions(
         if isinstance(skill, str)
     }
 
+    resume_skills = set()
+
+    for field in [
+        "skills",
+        "programming_languages",
+        "frameworks",
+        "tools",
+        "databases",
+        "ai_ml_technologies",
+    ]:
+        value = resume_intelligence.get(
+            field,
+            [],
+        )
+
+        if isinstance(value, list):
+            for item in value:
+                if isinstance(item, str):
+                    resume_skills.add(
+                        _normalize(item)
+                    )
+
+                elif isinstance(item, dict):
+                    skill = item.get("skill")
+
+                    if isinstance(skill, str):
+                        resume_skills.add(
+                            _normalize(skill)
+                        )
+
     questions = []
 
     def is_gap(skill):
         return _normalize(skill) in gap_normalized
 
-    if not is_gap("Django"):
+    def is_demonstrated(skill):
+        normalized_skill = _normalize(skill)
+
+        return any(
+            skill_matches(
+                resume_skill,
+                normalized_skill,
+            )
+            for resume_skill in resume_skills
+        )
+
+    if is_demonstrated("Django") and not is_gap("Django"):
         questions.append(
             {
                 "question": (
@@ -660,7 +700,7 @@ def _build_fallback_technical_questions(
             }
         )
 
-    if not is_gap("SQL"):
+    if is_demonstrated("SQL") and not is_gap("SQL"):
         questions.append(
             {
                 "question": (
@@ -676,7 +716,7 @@ def _build_fallback_technical_questions(
             }
         )
 
-    if not is_gap("WebSockets"):
+    if is_demonstrated("WebSockets") and not is_gap("WebSockets"):
         questions.append(
             {
                 "question": (
@@ -692,7 +732,7 @@ def _build_fallback_technical_questions(
             }
         )
 
-    if not is_gap("REST APIs"):
+    if is_demonstrated("REST APIs") and not is_gap("REST APIs"):
         questions.append(
             {
                 "question": (
@@ -708,7 +748,7 @@ def _build_fallback_technical_questions(
             }
         )
 
-    if not is_gap("Python"):
+    if is_demonstrated("Python") and not is_gap("Python"):
         questions.append(
             {
                 "question": (
@@ -758,18 +798,67 @@ def _build_allowed_terms(
                     allowed_terms.append(item)
 
                 elif isinstance(item, dict):
-                    for nested_value in item.values():
+                    display_name = item.get(
+                        "display_name",
+                    ) or item.get("skill")
+                    original_names = item.get(
+                        "original_names",
+                        [],
+                    )
 
-                        if isinstance(
-                            nested_value,
-                            str,
-                        ):
-                            allowed_terms.append(
-                                nested_value
-                            )
+                    if isinstance(display_name, str):
+                        allowed_terms.append(
+                            display_name
+                        )
+
+                    if isinstance(original_names, list):
+                        allowed_terms.extend(
+                            value
+                            for value in original_names
+                            if isinstance(value, str)
+                        )
 
         elif isinstance(value, str):
             allowed_terms.append(value)
+
+    # Authoritative requirement registry
+    registry = job_requirements.get(
+        "requirement_registry",
+        [],
+    )
+
+    if isinstance(registry, list):
+        for item in registry:
+            if not isinstance(item, dict):
+                continue
+
+            display_name = (
+                item.get("display_name")
+                or item.get("skill")
+            )
+
+            if isinstance(display_name, str):
+                display_name = display_name.strip()
+
+                if display_name:
+                    allowed_terms.append(
+                        display_name
+                    )
+
+            original_names = item.get(
+                "original_names",
+                [],
+            )
+
+            if isinstance(original_names, list):
+                for value in original_names:
+                    if (
+                        isinstance(value, str)
+                        and value.strip()
+                    ):
+                        allowed_terms.append(
+                            value.strip()
+                        )
 
     # Resume technologies
     for field in [
@@ -1032,11 +1121,15 @@ def interview_prep_node(state):
     )
 
     gap_skills = []
+    seen = set()
 
     for skill in missing_skills + partial_skills:
-
-        if skill not in gap_skills:
-            gap_skills.append(skill)
+        canonical = canonicalize(skill)
+        if canonical and canonical in seen:
+            continue
+        if canonical:
+            seen.add(canonical)
+        gap_skills.append(skill)
 
     # ==================================================
     # ACTUAL RESUME PROJECTS
@@ -1386,11 +1479,48 @@ Return ONLY valid JSON.
     # FALLBACK BEHAVIORAL QUESTIONS
     # ==================================================
 
-    result_data["behavioral_questions"] = (
-        _build_fallback_behavioral_questions(
-            resume_intelligence
+    if len(result_data["behavioral_questions"]) < 3:
+        fallback_behavioral = (
+            _build_fallback_behavioral_questions(
+                resume_intelligence
+            )
         )
-    )
+
+        existing_questions = (
+            result_data["behavioral_questions"]
+        )
+
+        combined = (
+            existing_questions
+            + fallback_behavioral
+        )
+
+        cleaned = []
+        seen = set()
+
+        for question in combined:
+            if not isinstance(question, dict):
+                continue
+
+            question_text = question.get(
+                "question",
+                "",
+            )
+
+            if not isinstance(question_text, str):
+                continue
+
+            normalized = _normalize(
+                question_text
+            )
+
+            if not normalized or normalized in seen:
+                continue
+
+            seen.add(normalized)
+            cleaned.append(question)
+
+        result_data["behavioral_questions"] = cleaned[:3]
 
     return {
         "interview_preparation": result_data

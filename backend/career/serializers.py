@@ -1,11 +1,11 @@
 from rest_framework import serializers
 
-
-from rest_framework import serializers
 from .models import CareerAnalysis
+
 
 class CareerAnalysisSerializer(serializers.Serializer):
     resume_id = serializers.IntegerField()
+
     job_description = serializers.CharField(
         min_length=50,
         allow_blank=False,
@@ -22,9 +22,13 @@ class CareerAnalysisSerializer(serializers.Serializer):
 
         return value
 
+
 class InterviewPrepSerializer(serializers.Serializer):
     resume_id = serializers.IntegerField()
-    job_description = serializers.CharField(min_length=50)
+
+    job_description = serializers.CharField(
+        min_length=50
+    )
 
 
 class CareerAnalysisHistorySerializer(
@@ -53,3 +57,30 @@ class CareerAnalysisHistorySerializer(
         ]
 
         read_only_fields = fields
+
+
+class InterviewAnswerEvaluationSerializer(
+    serializers.Serializer
+):
+    analysis_id = serializers.IntegerField()
+
+    question = serializers.CharField(
+        allow_blank=False,
+        trim_whitespace=True,
+    )
+
+    category = serializers.CharField(
+        allow_blank=False,
+        trim_whitespace=True,
+    )
+
+    difficulty = serializers.CharField(
+        allow_blank=False,
+        trim_whitespace=True,
+    )
+
+    answer = serializers.CharField(
+        min_length=10,
+        allow_blank=False,
+        trim_whitespace=True,
+    )

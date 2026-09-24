@@ -1,34 +1,33 @@
 import os
 
 from dotenv import load_dotenv
-from openai import OpenAI
+import google.generativeai as genai
 
 # Load environment variables from .env file
 load_dotenv()
 
 
 def get_llm_client():
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    api_key = os.getenv("GEMINI_API_KEY")
 
     if not api_key:
         raise ValueError(
-            "OPENROUTER_API_KEY is not configured."
+            "GEMINI_API_KEY is not configured."
         )
 
-    return OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=api_key,
-    )
+    genai.configure(api_key=api_key)
+    return genai
+
 
 def get_llm_model():
     return os.getenv(
-        "OPENROUTER_MODEL",
-        "openai/gpt-4o-mini",
+        "GEMINI_MODEL",
+        "gemini-1.5-flash",
     )
+
 
 def generate_resume_answer(question, context):
     client = get_llm_client()
-
     model = get_llm_model()
 
     system_prompt = """
@@ -55,19 +54,23 @@ User question:
 {question}
 """
 
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {
-                "role": "system",
-                "content": system_prompt,
-            },
-            {
-                "role": "user",
-                "content": user_prompt,
-            },
-        ],
-        temperature=0.2,
+    full_prompt = f"{system_prompt}\n\n{user_prompt}"
+
+    generation_config = {
+        "temperature": 0.2,
+    }
+
+    llm = client.GenerativeModel(
+        model_name=model,
+        generation_config=generation_config,
     )
 
-    return response.choices[0].message.content
+    response = llm.generate_content(full_prompt)
+
+    # Handle both response formats
+    if hasattr(response, 'text'):
+        return response.text
+    elif hasattr(response, 'content'):
+        return response.content
+    else:
+        return str(response)

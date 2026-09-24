@@ -1,18 +1,14 @@
 from django.urls import path
 
 from .views import (
-    CareerAnalysisView,
     CareerAnalysisStreamView,
     InterviewPrepView,
     CareerAnalysisHistoryView,
     CareerAnalysisHistoryDetailView,
+    CareerDashboardView,
+    InterviewAnswerEvaluationView,
 )
 urlpatterns = [
-    path(
-        "analyze/",
-        CareerAnalysisView.as_view(),
-        name="career-analysis",
-    ),
 
     path(
         "interview-prep/",
@@ -36,5 +32,15 @@ urlpatterns = [
         CareerAnalysisHistoryDetailView.as_view(),
     ),
 
+    path(
+        "dashboard/",
+        CareerDashboardView.as_view(),
+        name="career-dashboard",
+    ),
 
+    path(
+        "interview/evaluate/",
+        InterviewAnswerEvaluationView.as_view(),
+        name="interview-answer-evaluate",
+    ),
 ]

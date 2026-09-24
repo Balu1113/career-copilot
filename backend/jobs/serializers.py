@@ -1,10 +1,6 @@
 from rest_framework import serializers
+
 from .models import JobApplication
-
-
-class JobAnalysisSerializer(serializers.Serializer):
-    resume_id = serializers.IntegerField()
-    job_description = serializers.CharField(min_length=50)
 
 
 class JobApplicationSerializer(serializers.ModelSerializer):

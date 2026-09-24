@@ -82,9 +82,12 @@ ALIASES = {
     "ai agents": {
         "ai agent",
         "ai agents",
+        "autonomous agents",
+    },
+
+    "agentic ai": {
         "agentic ai",
         "agentic agents",
-        "autonomous agents",
     },
 
     "prompt engineering": {
@@ -98,8 +101,11 @@ ALIASES = {
     },
 
     "apis": {
-        "api",
-        "apis",
+    "api",
+    "apis",
+    },
+
+    "rest apis": {
         "rest api",
         "rest apis",
         "restful api",
@@ -196,6 +202,46 @@ ALIASES = {
     },
 
     # -----------------------------------------------------
+    # Architecture
+    # -----------------------------------------------------
+
+    "microservices": {
+        "microservice",
+        "microservices",
+    },
+
+    # -----------------------------------------------------
+    # Big Data / Data Engineering
+    # -----------------------------------------------------
+
+    "apache spark": {
+        "apache spark",
+        "spark",
+    },
+
+    "pyspark": {
+        "pyspark",
+        "py spark",
+    },
+
+    "databricks": {
+        "databricks",
+        "data bricks",
+        "data-bricks",
+        "azure databricks",
+    },
+
+    "hadoop": {
+        "hadoop",
+        "apache hadoop",
+    },
+
+    "hive": {
+        "hive",
+        "apache hive",
+    },
+
+    # -----------------------------------------------------
     # DevOps
     # -----------------------------------------------------
 
@@ -215,63 +261,12 @@ ALIASES = {
         "ci/cd",
     },
 
-    "deployment automation workflows": {
-        "deployment automation",
-        "deployment automation workflows",
-        "deployment automation workflow",
-        "automated deployment",
-        "automated deployments",
-    },
-
-    # -----------------------------------------------------
-    # Healthcare
-    # -----------------------------------------------------
-
-    "healthcare data systems": {
-        "healthcare data systems",
-        "health care data systems",
-        "healthcare data",
-        "health care data",
-    },
-
-    "healthcare workflow automation": {
-        "healthcare workflow automation",
-        "health care workflow automation",
-    },
-
-    "healthcare analytics": {
-        "healthcare analytics",
-        "health care analytics",
-    },
-
-    "nlp driven insights": {
-        "nlp driven insights",
-        "natural language processing insights",
-        "nlp driven analytics",
-        "nlp analytics",
-    },
-
-    # -----------------------------------------------------
-    # AI / Platform
-    # -----------------------------------------------------
-
-    "ai optimization techniques": {
-        "ai optimization techniques",
-        "ai optimization",
-        "llm optimization",
-        "model optimization",
-    },
-
-    "model as a service": {
-        "model as a service",
-        "maas",
-        "maas components",
-        "model as a service components",
-    },
-
-    "automation": {
-        "automation",
-        "workflow automation",
+    "version control": {
+        "git",
+        "version control",
+        "source control",
+        "source code management",
+        "scm",
     },
 }
 
@@ -290,12 +285,34 @@ NORMALIZED_ALIASES = {
 
 
 def canonicalize(text: str) -> str:
+    if not isinstance(text, str):
+        return ""
+
     normalized = normalize(text)
+    if not normalized:
+        return ""
 
+    # 1. Direct ALIASES lookup
     for canonical, aliases in NORMALIZED_ALIASES.items():
-
         if normalized in aliases:
             return canonical
+
+    # 2. Generic compact lookup (strips spaces, hyphens, dots, slashes)
+    compact_normalized = re.sub(r"[^a-z0-9]", "", normalized)
+    if compact_normalized:
+        for canonical, aliases in NORMALIZED_ALIASES.items():
+            for alias in aliases:
+                if re.sub(r"[^a-z0-9]", "", alias) == compact_normalized:
+                    return canonical
+
+    # 3. Ecosystem vendor prefix removal (e.g. "apache spark" -> "spark")
+    vendor_prefixes = ("apache ", "microsoft ", "amazon ", "google cloud ")
+    for prefix in vendor_prefixes:
+        if normalized.startswith(prefix):
+            stripped = normalized[len(prefix):].strip()
+            for canonical, aliases in NORMALIZED_ALIASES.items():
+                if stripped in aliases:
+                    return canonical
 
     return normalized
 
@@ -330,127 +347,6 @@ def text_contains_alias(
             return True
 
     return False
-
-
-# =========================================================
-# CANDIDATE EVIDENCE
-# =========================================================
-
-def build_candidate_evidence(
-    resume_intelligence: dict,
-) -> set[str]:
-
-    evidence = set()
-
-    # -----------------------------------------------------
-    # Structured fields
-    # -----------------------------------------------------
-
-    def add_structured(value):
-
-        if not value:
-            return
-
-        if isinstance(value, str):
-
-            canonical = canonicalize(value)
-
-            if canonical:
-                evidence.add(canonical)
-
-        elif isinstance(value, list):
-
-            for item in value:
-                add_structured(item)
-
-    add_structured(
-        resume_intelligence.get(
-            "skills",
-            [],
-        )
-    )
-
-    add_structured(
-        resume_intelligence.get(
-            "programming_languages",
-            [],
-        )
-    )
-
-    add_structured(
-        resume_intelligence.get(
-            "frameworks",
-            [],
-        )
-    )
-
-    add_structured(
-        resume_intelligence.get(
-            "tools_and_technologies",
-            [],
-        )
-    )
-
-    add_structured(
-        resume_intelligence.get(
-            "ai_ml_technologies",
-            [],
-        )
-    )
-
-    # -----------------------------------------------------
-    # Projects
-    # -----------------------------------------------------
-
-    for project in resume_intelligence.get(
-        "projects",
-        [],
-    ):
-
-        if not isinstance(project, dict):
-            continue
-
-        add_structured(
-            project.get(
-                "technologies",
-                [],
-            )
-        )
-
-        for description in project.get(
-            "description",
-            [],
-        ):
-
-            add_structured(description)
-
-    # -----------------------------------------------------
-    # Professional experience
-    # -----------------------------------------------------
-
-    for experience in resume_intelligence.get(
-        "experience",
-        [],
-    ):
-
-        if not isinstance(experience, dict):
-            continue
-
-        add_structured(
-            experience.get(
-                "technologies",
-                [],
-            )
-        )
-
-        for description in experience.get(
-            "description",
-            [],
-        ):
-
-            add_structured(description)
-
-    return evidence
 
 
 # =========================================================
@@ -619,195 +515,3 @@ def has_direct_evidence(
             return True
 
     return False
-
-
-# =========================================================
-# PARTIAL RELATIONSHIPS
-# =========================================================
-
-PARTIAL_RELATIONSHIPS = {
-
-    # -----------------------------------------------------
-    # Backend
-    # -----------------------------------------------------
-
-    # Python/Django does NOT demonstrate FastAPI.
-    "fastapi": set(),
-
-    # -----------------------------------------------------
-    # Vector / Search
-    # -----------------------------------------------------
-
-    # RAG/vector search/FAISS provide related evidence,
-    # but do not prove experience with a vector database.
-    "vector databases": {
-        "rag",
-        "vector search",
-        "faiss",
-    },
-
-    # RAG/vector search/vector databases provide related
-    # evidence for Azure AI Search, but do not demonstrate
-    # Azure-specific experience.
-    "azure ai search": {
-        "rag",
-        "vector databases",
-        "vector search",
-        "faiss",
-    },
-
-    # -----------------------------------------------------
-    # Azure
-    # -----------------------------------------------------
-
-    # Knowing Azure in general does NOT demonstrate:
-    # Azure Functions or Azure AI Search.
-    "microsoft azure": set(),
-
-    "azure cloud services": set(),
-
-    "azure functions": set(),
-
-    # -----------------------------------------------------
-    # Databases
-    # -----------------------------------------------------
-
-    # Vector database experience can be related to MongoDB,
-    # but does not prove MongoDB experience.
-    "mongodb": {
-        "vector databases",
-    },
-
-    # Same principle for Cosmos DB.
-    "cosmos db": {
-        "vector databases",
-    },
-
-    # -----------------------------------------------------
-    # Healthcare
-    # -----------------------------------------------------
-
-    "healthcare data systems": set(),
-
-    "healthcare workflow automation": {
-        "automation",
-    },
-
-    "healthcare analytics": set(),
-
-    "nlp driven insights": set(),
-
-    # -----------------------------------------------------
-    # AI optimization
-    # -----------------------------------------------------
-
-    "ai optimization techniques": set(),
-
-    # -----------------------------------------------------
-    # DevOps
-    # -----------------------------------------------------
-
-    "devops": set(),
-
-    "ci cd": set(),
-
-    "deployment automation workflows": set(),
-
-    # -----------------------------------------------------
-    # Model as a Service
-    # -----------------------------------------------------
-
-    "model as a service": set(),
-}
-
-
-def has_partial_evidence(
-    requirement: str,
-    candidate_evidence: set[str],
-    resume_text: str = "",
-) -> bool:
-
-    requirement_canonical = canonicalize(
-        requirement
-    )
-
-    related_skills = PARTIAL_RELATIONSHIPS.get(
-        requirement_canonical,
-        set(),
-    )
-
-    if not related_skills:
-        return False
-
-    # -----------------------------------------------------
-    # Structured evidence
-    # -----------------------------------------------------
-
-    if set(related_skills).intersection(
-        candidate_evidence
-    ):
-        return True
-
-    # -----------------------------------------------------
-    # Full resume text
-    # -----------------------------------------------------
-
-    for related_skill in related_skills:
-
-        if text_contains_alias(
-            resume_text,
-            related_skill,
-        ):
-            return True
-
-    return False
-
-
-# =========================================================
-# CLASSIFICATION
-# =========================================================
-
-def classify_requirement(
-    requirement: str,
-    candidate_evidence: set[str],
-    confirmed_matches: set[str] | None = None,
-    resume_text: str = "",
-) -> str:
-
-    # IMPORTANT:
-    #
-    # Resume Intelligence is the source of truth.
-    #
-    # Resume Analysis / confirmed_matches must NOT override
-    # deterministic evidence matching.
-    #
-    # This prevents an LLM from claiming that a skill exists
-    # when it is not explicitly supported by the resume.
-
-    # -----------------------------------------------------
-    # Explicit resume evidence
-    # -----------------------------------------------------
-
-    if has_direct_evidence(
-        requirement,
-        candidate_evidence,
-        resume_text,
-    ):
-        return "demonstrated"
-
-    # -----------------------------------------------------
-    # Related but incomplete evidence
-    # -----------------------------------------------------
-
-    if has_partial_evidence(
-        requirement,
-        candidate_evidence,
-        resume_text,
-    ):
-        return "partial"
-
-    # -----------------------------------------------------
-    # No evidence
-    # -----------------------------------------------------
-
-    return "missing"

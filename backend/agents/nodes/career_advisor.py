@@ -1,9 +1,11 @@
+import re
+
 from agents.schemas import CareerRecommendation
 from agents.services.structured_llm import generate_structured_output
 from agents.services.skill_normalizer import (
-    normalize_skill,
     skill_matches,
 )
+from agents.services.skill_matching import canonicalize
 
 
 def _normalize(value):
@@ -20,6 +22,7 @@ def _extract_skill_items(items):
     - [{"skill": "Python"}, {"skill": "FastAPI"}]
     """
     skills = []
+    seen = set()
 
     if not isinstance(items, list):
         return skills
@@ -37,8 +40,16 @@ def _extract_skill_items(items):
         else:
             continue
 
-        if skill and skill not in skills:
-            skills.append(skill)
+        if not skill:
+            continue
+
+        canonical = canonicalize(skill)
+        if canonical and canonical in seen:
+            continue
+
+        if canonical:
+            seen.add(canonical)
+        skills.append(skill)
 
     return skills
 
@@ -52,6 +63,7 @@ def _extract_gap_items(skill_gap_analysis):
     preparation.
     """
     gaps = []
+    seen = set()
 
     missing = _extract_skill_items(
         skill_gap_analysis.get("missing_skills", [])
@@ -62,116 +74,16 @@ def _extract_gap_items(skill_gap_analysis):
     )
 
     for skill in missing + partial:
-        if skill not in gaps:
-            gaps.append(skill)
+        canonical = canonicalize(skill)
+        if canonical and canonical in seen:
+            continue
+
+        if canonical:
+            seen.add(canonical)
+        gaps.append(skill)
 
     return gaps
 
-
-def _extract_resume_skills(resume_intelligence):
-    """
-    Collect technologies explicitly demonstrated by the resume.
-    This is used to prevent recommendations from falsely
-    claiming that a candidate already has a missing skill.
-    """
-    skills = []
-
-    fields = [
-        "skills",
-        "programming_languages",
-        "frameworks",
-        "tools_and_technologies",
-        "databases",
-        "ai_ml_technologies",
-    ]
-
-    for field in fields:
-        value = resume_intelligence.get(field, [])
-
-        if isinstance(value, list):
-            for item in value:
-                if isinstance(item, str):
-                    item = item.strip()
-
-                    if item and item not in skills:
-                        skills.append(item)
-
-                elif isinstance(item, dict):
-                    for nested_value in item.values():
-                        if isinstance(nested_value, str):
-                            nested_value = nested_value.strip()
-
-                            if (
-                                nested_value
-                                and nested_value not in skills
-                            ):
-                                skills.append(nested_value)
-
-        elif isinstance(value, str):
-            value = value.strip()
-
-            if value and value not in skills:
-                skills.append(value)
-
-    return skills
-
-
-def _extract_project_names(resume_intelligence):
-    """
-    Extract actual project names from the resume.
-    """
-    projects = []
-
-    resume_projects = resume_intelligence.get(
-        "projects",
-        [],
-    )
-
-    if not isinstance(resume_projects, list):
-        return projects
-
-    for project in resume_projects:
-        if not isinstance(project, dict):
-            continue
-
-        name = project.get("name")
-
-        if not isinstance(name, str):
-            continue
-
-        name = name.strip()
-
-        if name and name not in projects:
-            projects.append(name)
-
-    return projects
-
-def _collect_strings(value):
-    """
-    Recursively collect meaningful strings from dictionaries
-    and lists.
-    """
-    results = []
-
-    if isinstance(value, str):
-        value = value.strip()
-
-        if value:
-            results.append(value)
-
-    elif isinstance(value, list):
-        for item in value:
-            results.extend(
-                _collect_strings(item)
-            )
-
-    elif isinstance(value, dict):
-        for nested_value in value.values():
-            results.extend(
-                _collect_strings(nested_value)
-            )
-
-    return results
 
 
 def _extract_structured_skills(resume_intelligence):
@@ -222,7 +134,8 @@ def _build_allowed_terms(
     """
     allowed_terms = []
 
-    # Job requirements - only required/preferred skills
+    # Job requirements: required/preferred skills and the authoritative
+    # requirement registry.
     if isinstance(job_requirements, dict):
         for field in ["required_skills", "preferred_skills"]:
             skills = job_requirements.get(field, [])
@@ -232,6 +145,16 @@ def _build_allowed_terms(
                         skill = skill.strip()
                         if skill:
                             allowed_terms.append(skill)
+
+        registry = job_requirements.get("requirement_registry", [])
+        if isinstance(registry, list):
+            for item in registry:
+                if not isinstance(item, dict):
+                    continue
+
+                display_name = item.get("display_name") or item.get("skill")
+                if isinstance(display_name, str) and display_name.strip():
+                    allowed_terms.append(display_name.strip())
 
     # Resume structured skills only
     allowed_terms.extend(
@@ -260,85 +183,191 @@ def _build_allowed_terms(
     return normalized
 
 
-def _contains_supported_term(
-    text,
-    allowed_terms,
+
+
+def _resume_contains_architecture_evidence(value):
+    if isinstance(value, str):
+        normalized = _normalize(value)
+        return "monolithic" in normalized
+
+    if isinstance(value, list):
+        return any(
+            _resume_contains_architecture_evidence(item)
+            for item in value
+        )
+
+    if isinstance(value, dict):
+        return any(
+            _resume_contains_architecture_evidence(item)
+            for item in value.values()
+        )
+
+    return False
+
+
+def _sanitize_architecture_claims(value):
+    if isinstance(value, str):
+        if "candidate" not in _normalize(value):
+            return value
+
+        replacements = [
+            (
+                r"\bmonolithic(?:-style)?\s+Django applications\b",
+                "Django/Django REST Framework backend applications",
+            ),
+            (
+                r"\bmonolithic(?:-style)?\s+backend applications\b",
+                "backend applications",
+            ),
+            (
+                r"\bmonolithic(?:-style)?\s+backend\b",
+                "backend",
+            ),
+        ]
+
+        for pattern, replacement in replacements:
+            value = re.sub(
+                pattern,
+                replacement,
+                value,
+                flags=re.IGNORECASE,
+            )
+
+        return value
+
+    if isinstance(value, list):
+        return [
+            _sanitize_architecture_claims(item)
+            for item in value
+        ]
+
+    if isinstance(value, dict):
+        return {
+            key: _sanitize_architecture_claims(item)
+            for key, item in value.items()
+        }
+
+    return value
+
+
+def _has_extracted_requirements(
+    job_requirements,
+    missing_skills=None,
+    partial_skills=None,
 ):
-    """
-    Check whether a piece of recommendation text contains
-    at least one supported technology/skill.
-    """
-    if not isinstance(text, str):
-        return False
+    """Return True if job requirements were extracted from the JD."""
+    if missing_skills or partial_skills:
+        return True
 
-    normalized_text = _normalize(text)
+    if isinstance(job_requirements, dict):
+        registry = job_requirements.get("requirement_registry", [])
+        if isinstance(registry, list) and len(registry) > 0:
+            return True
 
-    if not normalized_text:
-        return False
+        req_skills = job_requirements.get("required_skills", [])
+        if isinstance(req_skills, list) and len(req_skills) > 0:
+            return True
 
-    for normalized_term in allowed_terms:
-        if not normalized_term:
-            continue
-
-        if normalized_term in normalized_text:
+        pref_skills = job_requirements.get("preferred_skills", [])
+        if isinstance(pref_skills, list) and len(pref_skills) > 0:
             return True
 
     return False
+
 
 def _build_match_summary(
     resume_intelligence,
     skill_gap_analysis,
     job_requirements,
+    resume_analysis,
 ):
     """
     Build a factual match summary that is JD-aware.
 
-    Prioritizes skills that are both demonstrated AND
-    relevant to the job requirements.
+    Uses resume_analysis.matching_skills as the foundation,
+    then appends skill gaps for preparation areas.
+
+    This function must NOT independently classify skills.
+    It must use the authoritative classifications from:
+    - resume_analysis.matching_skills (demonstrated)
+    - skill_gap_analysis.missing_skills (missing)
+    - skill_gap_analysis.partial_skills (partial)
     """
-    resume_skills = _extract_resume_skills(resume_intelligence)
-    gaps = _extract_gap_items(skill_gap_analysis)
+    # Get matching skills from resume analysis (JD-specific and authoritative)
+    matching_skills = []
 
-    # Get job's required/preferred skills
-    job_skills = set()
-    if isinstance(job_requirements, dict):
-        for field in ["required_skills", "preferred_skills"]:
-            skills = job_requirements.get(field, [])
-            if isinstance(skills, list):
-                for skill in skills:
-                    if isinstance(skill, str):
-                        skill = skill.strip()
-                        if skill:
-                            job_skills.add(_normalize(skill))
+    if isinstance(resume_analysis, dict):
+        raw_matching = resume_analysis.get("matching_skills", [])
+        if isinstance(raw_matching, list):
+            matching_skills = [
+                skill for skill in raw_matching
+                if isinstance(skill, str) and skill.strip()
+            ]
 
-    # Score resume skills by JD relevance
-    scored_skills = []
-    for skill in resume_skills:
-        normalized = _normalize(skill)
-        if normalized in job_skills:
-            scored_skills.append((skill, 2))  # Direct match
-        elif any(jd_skill in normalized or normalized in jd_skill for jd_skill in job_skills):
-            scored_skills.append((skill, 1))  # Partial match
+    # Separate partial vs missing for different wording
+    partial_skills = []
+    missing_skills = []
 
-    # Sort by relevance score, then take top skills
-    scored_skills.sort(key=lambda x: (-x[1], x[0]))
-    demonstrated = [s[0] for s in scored_skills[:10]]
+    if isinstance(skill_gap_analysis, dict):
+        raw_partial = skill_gap_analysis.get("partial_skills", [])
+        if isinstance(raw_partial, list):
+            for item in raw_partial:
+                if isinstance(item, dict):
+                    skill = item.get("skill", "")
+                    if isinstance(skill, str) and skill.strip():
+                        partial_skills.append(skill.strip())
+                elif isinstance(item, str) and item.strip():
+                    partial_skills.append(item.strip())
 
-    if not demonstrated:
-        demonstrated = resume_skills[:10]
+        raw_missing = skill_gap_analysis.get("missing_skills", [])
+        if isinstance(raw_missing, list):
+            for item in raw_missing:
+                if isinstance(item, dict):
+                    skill = item.get("skill", "")
+                    if isinstance(skill, str) and skill.strip():
+                        missing_skills.append(skill.strip())
+                elif isinstance(item, str) and item.strip():
+                    missing_skills.append(item.strip())
 
-    if demonstrated:
-        demonstrated_text = ", ".join(demonstrated)
+    has_reqs = _has_extracted_requirements(
+        job_requirements,
+        missing_skills,
+        partial_skills,
+    )
+
+    # Build first sentence (demonstrated status)
+    if matching_skills:
+        demonstrated_text = ", ".join(matching_skills[:10])
+        first_sentence = f"The candidate demonstrates experience in {demonstrated_text}."
+    elif has_reqs:
+        first_sentence = "The resume does not explicitly demonstrate any of the listed job requirements."
     else:
-        demonstrated_text = "No specific technologies were extracted"
+        first_sentence = "No specific technologies were extracted from the job description."
 
-    if gaps:
-        gaps_text = ", ".join(gaps)
+    # Build gap sentence with distinction
+    if missing_skills and partial_skills:
+        missing_text = ", ".join(missing_skills)
+        partial_text = ", ".join(partial_skills)
+        gap_sentence = (
+            f"Key preparation areas include {missing_text} (missing). "
+            f"Skills needing additional depth include {partial_text} (partial)."
+        )
+    elif missing_skills:
+        gaps_text = ", ".join(missing_skills)
         gap_sentence = f"Key preparation areas include {gaps_text}."
+    elif partial_skills:
+        gaps_text = ", ".join(partial_skills)
+        gap_sentence = f"Skills needing additional depth include {gaps_text}."
     else:
-        gap_sentence = "No specific skill gaps requiring preparation were identified."
+        if has_reqs or matching_skills:
+            gap_sentence = "No specific skill gaps requiring preparation were identified."
+        else:
+            gap_sentence = ""
 
-    return f"The candidate demonstrates experience in {demonstrated_text}. {gap_sentence}"
+    if gap_sentence:
+        return f"{first_sentence} {gap_sentence}"
+
+    return first_sentence
 
 
 def _build_recommendation_prompt(
@@ -380,6 +409,13 @@ IMPORTANT RULES:
 13. Do not recommend unrelated technologies.
 14. Do not invent employer requirements.
 15. Do not invent candidate experience.
+16. Treat each `merged_requirements.canonical_group` as one
+    capability. Its `original_names` are terminology aliases,
+    not separate gaps to recommend independently.
+17. Do not characterize the candidate's applications as monolithic,
+    distributed, serverless, or otherwise architected unless the resume
+    explicitly establishes that architecture. Describe the demonstrated
+    framework or backend work instead.
 
 JOB REQUIREMENTS:
 {job_requirements}
@@ -402,12 +438,26 @@ For recommended_topics:
 - Include the relevant source gap.
 
 For recommended_projects:
-- Generate practical portfolio projects that help develop
-  the identified gaps.
-- Projects may combine multiple related gaps when that is
-  logically useful.
+- Generate 1-3 practical portfolio projects that help develop the identified gaps.
+- Each project should focus on 2-3 related technologies to keep it focused and learnable.
+- Group related gaps together (e.g., FastAPI + Microservices, or Azure + Azure Functions).
+- Avoid combining every gap into one enormous project.
 - Use technologies relevant to the job and the gap.
 - Do not claim the candidate has already built these projects.
+- A long-running API service (e.g. FastAPI) and serverless
+  functions (e.g. Azure Functions) are SEPARATE components
+  with distinct roles. Never describe Azure Functions (or any
+  serverless platform) as the deployment mechanism for a
+  FastAPI service.
+- When a project involves both, state the architecture
+  explicitly: the FastAPI service handles API/RAG endpoints;
+  serverless functions handle event-driven work such as
+  document ingestion or background indexing; both may target
+  the same downstream store (e.g. Azure AI Search).
+
+For each project, include:
+- purpose: A brief statement of what the project demonstrates
+- gaps_addressed: List of specific skill gaps this project addresses
 
 For next_steps:
 - Give concrete learning and preparation actions.
@@ -425,16 +475,19 @@ def _validate_topic_recommendations(
     """
     Keep only topics that are clearly associated with an
     authoritative gap.
-
-    This prevents the LLM from adding unrelated technologies.
     """
     validated = []
 
-    normalized_gaps = {
-        _normalize(skill): skill
-        for skill in gap_skills
-        if isinstance(skill, str)
-    }
+    normalized_gaps = {}
+
+    for skill in gap_skills:
+        if not isinstance(skill, str):
+            continue
+
+        canonical = canonicalize(skill)
+
+        if canonical:
+            normalized_gaps[canonical] = skill
 
     topics = recommendations or []
 
@@ -442,10 +495,7 @@ def _validate_topic_recommendations(
         if not isinstance(topic, dict):
             continue
 
-        source_gaps = topic.get(
-            "source_gaps",
-            [],
-        )
+        source_gaps = topic.get("source_gaps", [])
 
         if not isinstance(source_gaps, list):
             continue
@@ -456,25 +506,18 @@ def _validate_topic_recommendations(
             if not isinstance(source_gap, str):
                 continue
 
-            normalized_source = _normalize(
-                source_gap
-            )
+            canonical_source = canonicalize(source_gap)
 
-            if normalized_source in normalized_gaps:
-                canonical_gap = normalized_gaps[
-                    normalized_source
-                ]
+            if canonical_source in normalized_gaps:
+                canonical_gap = normalized_gaps[canonical_source]
 
                 if canonical_gap not in valid_source_gaps:
-                    valid_source_gaps.append(
-                        canonical_gap
-                    )
+                    valid_source_gaps.append(canonical_gap)
 
         if not valid_source_gaps:
             continue
 
         topic["source_gaps"] = valid_source_gaps
-
         validated.append(topic)
 
     return validated
@@ -496,11 +539,6 @@ def _validate_projects(
     """
     validated = []
 
-    normalized_gaps = [
-        _normalize(skill)
-        for skill in gap_skills
-        if isinstance(skill, str)
-    ]
 
     for project in projects or []:
         if not isinstance(project, dict):
@@ -553,6 +591,18 @@ def _validate_projects(
                 break
 
         if not addresses_gap:
+            continue
+
+        # -----------------------------------------
+        # 1b. Project must not introduce unsupported
+        #     implementation tools (e.g. Docker) that
+        #     are outside the supported vocabulary.
+        # -----------------------------------------
+
+        if _mentions_unsupported_tool(
+            project_text,
+            allowed_terms,
+        ):
             continue
 
         # -----------------------------------------
@@ -610,23 +660,111 @@ def _validate_projects(
     return validated
 
 
+# -----------------------------------------
+# Implementation-tool registry
+# -----------------------------------------
+#
+# These are generic, frequently-hallucinated implementation
+# technologies that LLMs tend to attach to a gap even though the
+# job description, resume, and gap analysis never mention them
+# (for example "containerization using Docker" attached to a
+# Microservices gap).
+#
+# The list is deliberately technology-agnostic to the JD: a term is
+# only rejected when it is NOT part of the supported vocabulary
+# (job requirements + resume skills + identified gaps). If a JD
+# genuinely requires Docker, `_build_allowed_terms` recognizes it
+# and the guard stays silent.
+IMPLEMENTATION_TOOL_TERMS = {
+    "docker",
+    "kubernetes",
+    "k8s",
+    "terraform",
+    "ansible",
+    "jenkins",
+    "helm",
+    "prometheus",
+    "grafana",
+    "airflow",
+    "spark",
+    "snowflake",
+    "kafka",
+    "gitlab",
+    "circleci",
+    "travis",
+    "bitbucket",
+    "elasticsearch",
+    "sqlalchemy",
+}
+
+
+def _mentions_unsupported_tool(
+    text,
+    allowed_terms,
+):
+    """
+    Return True when text names an implementation tool that is
+    not part of the supported vocabulary.
+
+    A tool is supported when its normalized name (or any of its
+    individual words) is present in allowed_terms.
+    """
+    if not isinstance(text, str):
+        return False
+
+    normalized_text = _normalize(text)
+
+    if not normalized_text:
+        return False
+
+    if not isinstance(allowed_terms, dict):
+        allowed_terms = {}
+
+    for tool in IMPLEMENTATION_TOOL_TERMS:
+        if not skill_matches(
+            normalized_text,
+            tool,
+        ):
+            continue
+
+        normalized_tool = _normalize(tool)
+
+        if normalized_tool in allowed_terms:
+            continue
+
+        # "GitHub Actions"/"Actions on Google" style multi-word
+        # labels are acceptable when any constituent word is
+        # itself part of the supported vocabulary (e.g. GitHub).
+        tool_parts = normalized_tool.split()
+
+        if any(
+            part in allowed_terms
+            for part in tool_parts
+        ):
+            continue
+
+        return True
+
+    return False
+
+
 def _validate_next_steps(
     next_steps,
     gap_skills,
+    allowed_terms=None,
 ):
     """
     Validate next steps against identified gaps.
 
     A step is retained when its text references at least one
-    authoritative gap.
+    authoritative gap AND does not introduce an implementation
+    tool that is outside the supported vocabulary.
     """
     validated = []
 
-    normalized_gaps = [
-        _normalize(skill)
-        for skill in gap_skills
-        if isinstance(skill, str)
-    ]
+    if allowed_terms is None:
+        allowed_terms = {}
+
 
     for step in next_steps or []:
         if not isinstance(step, dict):
@@ -649,8 +787,16 @@ def _validate_next_steps(
                 related = True
                 break
 
-        if related:
-            validated.append(step)
+        if not related:
+            continue
+
+        if _mentions_unsupported_tool(
+            step_text,
+            allowed_terms,
+        ):
+            continue
+
+        validated.append(step)
 
     return validated
 
@@ -712,21 +858,22 @@ def _ensure_gap_coverage(
             [],
         ):
             if isinstance(source_gap, str):
-                covered.add(
-                    _normalize(source_gap)
-                )
+                canonical = canonicalize(source_gap)
+
+                if canonical:
+                    covered.add(canonical)
 
     for gap in gap_skills:
-        normalized_gap = _normalize(gap)
+        canonical_gap = canonicalize(gap)
 
-        if normalized_gap in covered:
+        if not canonical_gap or canonical_gap in covered:
             continue
 
         topics.append(
             {
                 "topic": gap,
                 "priority": gap_priorities.get(
-                    normalized_gap,
+                    _normalize(gap),
                     "Medium",
                 ),
                 "reason": (
@@ -736,6 +883,8 @@ def _ensure_gap_coverage(
                 "source_gaps": [gap],
             }
         )
+
+        covered.add(canonical_gap)
 
     return topics
 
@@ -840,6 +989,9 @@ Do not invent job requirements.
 
     result_data = result.model_dump()
 
+    if not _resume_contains_architecture_evidence(resume_intelligence):
+        result_data = _sanitize_architecture_claims(result_data)
+
     result_data["recommended_topics"] = (
         _validate_topic_recommendations(
             result_data.get(
@@ -871,11 +1023,9 @@ Do not invent job requirements.
 
     result_data["next_steps"] = (
         _validate_next_steps(
-            result_data.get(
-                "next_steps",
-                [],
-            ),
+            result_data.get("next_steps", []),
             gap_skills,
+            allowed_terms,
         )
     )
 
@@ -884,6 +1034,7 @@ Do not invent job requirements.
             resume_intelligence,
             skill_gap_analysis,
             job_requirements,
+            resume_analysis,
         )
     )
 

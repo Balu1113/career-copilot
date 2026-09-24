@@ -47,8 +47,11 @@ def skill_matches(
     if not text_normalized or not skill_normalized:
         return False
 
-    # Exact phrase
-    if skill_normalized in text_normalized:
+    # Exact phrase (word-boundary match to prevent "ai" matching inside "azure ai search")
+    if re.search(
+        r"(?<!\w)" + re.escape(skill_normalized) + r"(?!\w)",
+        text_normalized,
+    ):
         return True
 
     # Singular/plural handling
@@ -84,7 +87,10 @@ def skill_matches(
     )
 
     for variant in variants:
-        if variant in text_normalized:
+        if re.search(
+            r"(?<!\w)" + re.escape(variant) + r"(?!\w)",
+            text_normalized,
+        ):
             return True
 
     return False

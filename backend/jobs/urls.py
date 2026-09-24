@@ -1,18 +1,12 @@
 from django.urls import path
 
 from .views import (
-    JobAnalysisView,
     JobApplicationListCreateView,
     JobApplicationDetailView,
 )
 
-urlpatterns = [
-    path(
-        "analyze/",
-        JobAnalysisView.as_view(),
-        name="job-analysis",
-    ),
 
+urlpatterns = [
     path(
         "",
         JobApplicationListCreateView.as_view(),

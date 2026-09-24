@@ -1,4 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useLocation } from "react-router-dom";
 import {
   Briefcase,
   Calendar,
@@ -29,6 +34,7 @@ const initialForm = {
 };
 
 function Applications() {
+  const location = useLocation();
   const [applications, setApplications] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [showForm, setShowForm] = useState(false);
@@ -57,6 +63,70 @@ function Applications() {
   useEffect(() => {
     fetchApplications();
   }, []);
+
+  useEffect(() => {
+  if (
+    location.state?.fromCareerAnalysis &&
+    location.state?.analysis
+  ) {
+    const analysis = location.state.analysis;
+
+    const recommendation =
+      analysis.career_recommendation;
+
+    const skillGap =
+      analysis.skill_gap_analysis;
+
+    const notes = [
+      "Career Analysis",
+      "",
+      recommendation?.match_summary
+        ? `Match Summary: ${recommendation.match_summary}`
+        : "",
+      "",
+      skillGap?.missing_skills?.length
+        ? `Missing Skills: ${skillGap.missing_skills
+            .map((item) =>
+              typeof item === "object"
+                ? item.skill
+                : item
+            )
+            .join(", ")}`
+        : "",
+      "",
+      recommendation?.next_steps?.length
+        ? `Next Steps:\n${recommendation.next_steps
+            .map((item, index) => {
+              const step =
+                typeof item === "object"
+                  ? item.step
+                  : item;
+
+              return `${index + 1}. ${step}`;
+            })
+            .join("\n")}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    setForm({
+      company: "",
+      job_title: "",
+      job_url: "",
+      status: "saved",
+      applied_date: "",
+      notes,
+    });
+
+    setShowForm(true);
+
+    window.history.replaceState(
+      {},
+      document.title
+    );
+  }
+}, [location.state]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;

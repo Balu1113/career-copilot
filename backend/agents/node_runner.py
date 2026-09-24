@@ -25,8 +25,8 @@ def run_node(node_name, node_function, state):
 
     try:
         result = node_function(state)
-
-        completed_nodes.append(node_name)
+        if node_name not in completed_nodes:
+            completed_nodes.append(node_name)
 
         emit_event({
             "type": "node_finished",

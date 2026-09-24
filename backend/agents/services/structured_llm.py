@@ -2,7 +2,7 @@ import json
 import os
 from typing import Type, TypeVar
 
-from openai import OpenAI
+import google.generativeai as genai
 from pydantic import BaseModel, ValidationError
 
 
@@ -10,23 +10,21 @@ T = TypeVar("T", bound=BaseModel)
 
 
 def get_client():
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    api_key = os.getenv("GEMINI_API_KEY")
 
     if not api_key:
         raise ValueError(
-            "OPENROUTER_API_KEY is not configured."
+            "GEMINI_API_KEY is not configured."
         )
 
-    return OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=api_key,
-    )
+    genai.configure(api_key=api_key)
+    return genai
 
 
 def get_model():
     return os.getenv(
-        "OPENROUTER_MODEL",
-        "mistralai/mistral-7b-instruct",
+        "GEMINI_MODEL",
+        "gemini-1.5-flash",
     )
 
 
@@ -52,6 +50,12 @@ def generate_structured_output(
 ):
     client = get_client()
     model = get_model()
+    request_timeout = float(
+        os.getenv("GEMINI_TIMEOUT_SECONDS", "60")
+    )
+    max_output_tokens = int(
+        os.getenv("GEMINI_MAX_OUTPUT_TOKENS", "4096")
+    )
 
     current_prompt = user_prompt
     last_error = None
@@ -60,33 +64,41 @@ def generate_structured_output(
     schema_json = schema.model_json_schema()
 
     for attempt in range(max_retries + 1):
-
         try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": system_prompt,
-                    },
-                    {
-                        "role": "user",
-                        "content": current_prompt,
-                    },
-                ],
-                temperature=0.1,
-                response_format={
-                    "type": "json_object"
-                },
-                max_tokens=800,
+            # Combine system and user prompts for Gemini
+            full_prompt = f"{system_prompt}\n\n{current_prompt}"
+
+            generation_config = {
+                "temperature": 0.1,
+                "response_mime_type": "application/json",
+                "max_output_tokens": max_output_tokens,
+            }
+
+            llm = client.GenerativeModel(
+                model_name=model,
+                generation_config=generation_config,
             )
 
-            content = response.choices[0].message.content
+            response = llm.generate_content(
+                full_prompt,
+                stream=False,
+                request_options={"timeout": request_timeout},
+            )
+
+            # Handle both response formats
+            if hasattr(response, 'text'):
+                content = response.text
+            elif hasattr(response, 'content'):
+                content = response.content
+            else:
+                content = str(response)
 
             print(
                 f"\n========== STRUCTURED LLM ATTEMPT "
                 f"{attempt + 1} =========="
             )
+            print(f"Content type: {type(content)}")
+            print(f"Content length: {len(content) if content else 0}")
             print(content)
             print("==========================================\n")
 
@@ -96,22 +108,19 @@ def generate_structured_output(
                 )
 
             cleaned = clean_json_response(content)
-
             data = json.loads(cleaned)
-
             result = schema.model_validate(data)
-
-            return result
+            return result.model_dump()
 
         except (
             json.JSONDecodeError,
             ValidationError,
             ValueError,
         ) as exc:
-
             last_error = exc
 
-            current_prompt = (
+            # Build the retry prompt as a single user message
+            retry_message = (
                 "Your previous response did not match the required "
                 "output structure.\n\n"
 
@@ -155,6 +164,9 @@ def generate_structured_output(
                 "Fix the validation error and return ONLY the corrected "
                 "JSON object."
             )
+
+            current_prompt = retry_message
+
     raise ValueError(
         f"Failed to generate valid structured output after "
         f"{max_retries + 1} attempts. "

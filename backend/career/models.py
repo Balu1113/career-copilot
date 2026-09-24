@@ -19,6 +19,10 @@ class CareerAnalysis(models.Model):
 
     job_description = models.TextField()
 
+    resume_intelligence = models.JSONField(
+        default=dict,
+    )
+
     job_requirements = models.JSONField(
         default=dict,
     )
@@ -38,12 +42,10 @@ class CareerAnalysis(models.Model):
     interview_preparation = models.JSONField(
         default=dict,
     )
-    
+
     created_at = models.DateTimeField(
         auto_now_add=True,
     )
-
-    resume_intelligence = models.JSONField(default=dict)
 
     class Meta:
         ordering = ["-created_at"]
