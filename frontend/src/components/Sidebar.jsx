@@ -95,7 +95,17 @@ function Sidebar() {
 
         <button
           className={`nav-item ${
-            isActive("/interview-history") ? "active" : ""
+            isActive("/interview-performance") ? "active" : ""
+          }`}
+          onClick={() => navigate("/interview-performance")}
+        >
+          <BarChart3 size={18} />
+          Interview Performance
+        </button>
+
+        <button
+          className={`nav-item ${
+            isActive("/interview-prep") ? "active" : ""
           }`}
           onClick={() => navigate("/interview-history")}
         >
@@ -104,8 +114,10 @@ function Sidebar() {
         </button>
 
         <button
-          className={`nav-item ${isActive("/interview-prep") ? "active" : ""}`}
-          onClick={() => navigate("/interview-prep")}
+          className={`nav-item ${
+            isActive("/interview-history") ? "active" : ""
+          }`}
+          onClick={() => navigate("/interview-history")}
         >
           <MessageSquare size={18} />
           Interview Prep

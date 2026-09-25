@@ -32,6 +32,9 @@ from .serializers import (
     InterviewAnswerEvaluationSerializer,
 )
 
+from .services.interview_analytics import (
+    get_interview_performance_analytics,
+)
 from .services.interview_prep import generate_interview_prep
 from .services.resume_optimizer import optimize_resume_for_job
 from .services.roadmap_generator import generate_career_roadmap
@@ -872,6 +875,15 @@ class CareerRoadmapDetailView(APIView):
                 "created_at": roadmap.created_at,
                 "updated_at": roadmap.updated_at,
             }
+        )
+
+
+class InterviewPerformanceAnalyticsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response(
+            get_interview_performance_analytics(request.user)
         )
 
 

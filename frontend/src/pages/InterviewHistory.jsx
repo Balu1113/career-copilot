@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
+  BarChart3,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -153,6 +154,14 @@ function InterviewHistory() {
                 </p>
               </div>
             </div>
+
+            <button
+              className="history-performance-button"
+              onClick={() => navigate("/interview-performance")}
+            >
+              <BarChart3 size={16} />
+              View Performance
+            </button>
           </div>
 
           {/* Error */}

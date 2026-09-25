@@ -7,6 +7,7 @@ from .views import (
     CareerAnalysisHistoryDetailView,
     CareerDashboardView,
     InterviewAnswerEvaluationView,
+    InterviewPerformanceAnalyticsView,
     ResumeOptimizationView,
     CareerRoadmapView,
     CareerRoadmapListView,
@@ -14,7 +15,7 @@ from .views import (
     StartInterviewView,
     SubmitInterviewAnswerView,
     InterviewSessionDetailView,
-    InterviewHistoryView
+    InterviewHistoryView,
 )
 urlpatterns = [
 
@@ -77,26 +78,32 @@ urlpatterns = [
     ),
 
     path(
-    "interview/start/",
-    StartInterviewView.as_view(),
-    name="start-interview",
-),
+        "interview/analytics/",
+        InterviewPerformanceAnalyticsView.as_view(),
+        name="interview-performance-analytics",
+    ),
 
-path(
-    "interview/answer/",
-    SubmitInterviewAnswerView.as_view(),
-    name="submit-interview-answer",
-),
+    path(
+        "interview/start/",
+        StartInterviewView.as_view(),
+        name="start-interview",
+    ),
 
-path(
-    "interview/sessions/<int:session_id>/",
-    InterviewSessionDetailView.as_view(),
-    name="interview-session-detail",
-),
+    path(
+        "interview/answer/",
+        SubmitInterviewAnswerView.as_view(),
+        name="submit-interview-answer",
+    ),
 
-path(
-    "interview/history/",
-    InterviewHistoryView.as_view(),
-    name="interview-history",
-),
+    path(
+        "interview/sessions/<int:session_id>/",
+        InterviewSessionDetailView.as_view(),
+        name="interview-session-detail",
+    ),
+
+    path(
+        "interview/history/",
+        InterviewHistoryView.as_view(),
+        name="interview-history",
+    ),
 ]

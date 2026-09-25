@@ -1,6 +1,8 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Resumes from "./pages/Resumes";
@@ -21,6 +23,7 @@ import RecommendedJobs from "./pages/RecommendedJobs";
 import CareerRoadmap from "./pages/CareerRoadmap";
 import InterviewSimulator from "./pages/InterviewSimulator";
 import InterviewHistory from "./pages/InterviewHistory";
+import InterviewPerformance from "./pages/InterviewPerformance";
 
 function App() {
   return (
@@ -29,6 +32,8 @@ function App() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
         <Route
           path="/dashboard"
@@ -210,6 +215,15 @@ function App() {
           element={
             <ProtectedRoute>
               <InterviewHistory />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/interview-performance"
+          element={
+            <ProtectedRoute>
+              <InterviewPerformance />
             </ProtectedRoute>
           }
         />
