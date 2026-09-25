@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import {
   ArrowRight,
   BriefcaseBusiness,
+  CheckCircle2,
   ExternalLink,
   FileText,
   Loader2,
   RefreshCw,
   Sparkles,
+  X,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -28,6 +30,10 @@ function RecommendedJobs() {
   const [locationName, setLocationName] = useState(
     location.state?.location || "Hyderabad",
   );
+
+  const [preparingJobId, setPreparingJobId] = useState(null);
+  const [applicationPackage, setApplicationPackage] = useState(null);
+  const [applicationError, setApplicationError] = useState("");
 
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -86,7 +92,7 @@ function RecommendedJobs() {
           setResumeType(combined[0].type);
         }
       } catch (err) {
-        console.error(err);
+        console.error("Failed to load resumes:", err);
         setError("Unable to load your resumes.");
       } finally {
         setLoadingResumes(false);
@@ -118,6 +124,18 @@ function RecommendedJobs() {
     return "match-low";
   };
 
+  const buildJobDescription = (job) => {
+    return [
+      job.description,
+      job.responsibilities,
+      job.skills,
+      job.experience,
+      job.about_company,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+  };
+
   const searchRecommendedJobs = async () => {
     if (!resumeId) {
       setError("Please select a resume.");
@@ -147,7 +165,7 @@ function RecommendedJobs() {
       setJobs(response.data.jobs || []);
       setSearched(true);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load recommended jobs:", err);
 
       setError(
         err.response?.data?.detail || "Unable to load recommended jobs.",
@@ -159,16 +177,43 @@ function RecommendedJobs() {
     }
   };
 
+  const handleApproveAndTrack = async () => {
+    if (!applicationPackage?.job) {
+      return;
+    }
+
+    try {
+      setApplicationError("");
+
+      const job = applicationPackage.job;
+
+      const response = await api.post("/jobs/approve-application/", {
+        company: job.company || "",
+        job_title: job.title || "",
+        job_url: job.apply_link || "",
+        notes:
+          "Prepared using AI Application Agent. User reviewed the application package before tracking.",
+      });
+
+      setApplicationPackage(null);
+
+      navigate("/applications", {
+        state: {
+          applicationCreated: true,
+          application: response.data,
+        },
+      });
+    } catch (err) {
+      console.error("Failed to track application:", err);
+
+      setApplicationError(
+        err.response?.data?.detail || "Unable to track the application.",
+      );
+    }
+  };
+
   const analyzeJob = (job) => {
-    const jobDescription = [
-      job.description,
-      job.responsibilities,
-      job.skills,
-      job.experience,
-      job.about_company,
-    ]
-      .filter(Boolean)
-      .join("\n\n");
+    const jobDescription = buildJobDescription(job);
 
     navigate("/career-analysis", {
       state: {
@@ -187,16 +232,8 @@ function RecommendedJobs() {
     });
   };
 
-  const tailorResume = (job) => {
-    const jobDescription = [
-      job.description,
-      job.responsibilities,
-      job.skills,
-      job.experience,
-      job.about_company,
-    ]
-      .filter(Boolean)
-      .join("\n\n");
+  const tailorResume = (job, optimization = null) => {
+    const jobDescription = buildJobDescription(job);
 
     navigate("/resume-builder", {
       state: {
@@ -208,8 +245,80 @@ function RecommendedJobs() {
         company: job.company || "",
         location: job.location || "",
         jobUrl: job.apply_link || "",
+        optimization,
       },
     });
+  };
+
+  const handlePrepareApplication = async (job) => {
+    if (!resumeId) {
+      setApplicationError(
+        "Please select a resume before preparing an application.",
+      );
+      return;
+    }
+
+    const [, selectedId] = String(resumeId).split(":");
+
+    if (!selectedId) {
+      setApplicationError("Invalid resume selection.");
+      return;
+    }
+
+    try {
+      setPreparingJobId(job.id);
+      setApplicationError("");
+      setApplicationPackage(null);
+
+      const response = await api.post("/agents/application-agent/", {
+        job,
+        resume: {
+          id: selectedId,
+          type: resumeType || "uploaded",
+        },
+      });
+
+      setApplicationPackage({
+        job,
+        ...response.data,
+      });
+    } catch (err) {
+      console.error("Application agent failed:", err);
+
+      setApplicationError(
+        err.response?.data?.detail || "Unable to prepare the application.",
+      );
+    } finally {
+      setPreparingJobId(null);
+    }
+  };
+
+  const closeApplicationReview = () => {
+    setApplicationPackage(null);
+    setApplicationError("");
+  };
+
+  const handleTailorFromApplication = () => {
+    if (!applicationPackage?.job) {
+      return;
+    }
+
+    tailorResume(
+      applicationPackage.job,
+      applicationPackage.optimization || null,
+    );
+  };
+
+  const handleReviewAndApply = () => {
+    const url =
+      applicationPackage?.job?.apply_link || applicationPackage?.job?.job_url;
+
+    if (!url) {
+      setApplicationError("This job does not have an application URL.");
+      return;
+    }
+
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -244,9 +353,14 @@ function RecommendedJobs() {
 
         {error && <div className="recommended-jobs-error">{error}</div>}
 
+        {applicationError && (
+          <div className="recommended-jobs-error">{applicationError}</div>
+        )}
+
         <section className="recommended-search-card">
           <div className="recommended-search-heading">
             <h2>Find Jobs For Your Resume</h2>
+
             <p>
               We'll compare your demonstrated skills with real job listings.
             </p>
@@ -327,6 +441,7 @@ function RecommendedJobs() {
         {loading && (
           <div className="recommended-jobs-loading">
             <Loader2 size={28} className="spinning" />
+
             <p>
               Searching real Indian job listings and matching them with your
               resume...
@@ -350,7 +465,10 @@ function RecommendedJobs() {
               <div>
                 <h2>Jobs Matched To Your Resume</h2>
 
-                <p>{jobs.length} real job opportunities found.</p>
+                <p>
+                  {jobs.length} real job
+                  {jobs.length !== 1 ? " opportunities" : " opportunity"} found.
+                </p>
               </div>
             </div>
 
@@ -360,11 +478,12 @@ function RecommendedJobs() {
 
                 const percentage = Number(match.match_percentage || 0);
 
+                const jobKey = job.apply_link || job.id || index;
+
+                const isPreparing = preparingJobId === job.id;
+
                 return (
-                  <article
-                    className="recommended-job-card"
-                    key={job.apply_link || job.id || index}
-                  >
+                  <article className="recommended-job-card" key={jobKey}>
                     <div className="recommended-job-top">
                       <div className="recommended-company-icon">
                         <BriefcaseBusiness size={21} />
@@ -450,6 +569,24 @@ function RecommendedJobs() {
                         Tailor Resume
                       </button>
 
+                      <button
+                        className="prepare-application-btn"
+                        onClick={() => handlePrepareApplication(job)}
+                        disabled={isPreparing}
+                      >
+                        {isPreparing ? (
+                          <>
+                            <Loader2 size={16} className="spinning" />
+                            Preparing...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={16} />
+                            Prepare Application
+                          </>
+                        )}
+                      </button>
+
                       {job.apply_link && (
                         <a
                           className="recommended-apply-btn"
@@ -475,6 +612,201 @@ function RecommendedJobs() {
               })}
             </div>
           </section>
+        )}
+
+        {/* Human Review Modal */}
+        {applicationPackage && (
+          <div className="application-agent-modal-overlay">
+            <div className="application-agent-modal">
+              <div className="application-agent-header">
+                <div>
+                  <span className="application-agent-badge">
+                    AI Application Agent
+                  </span>
+
+                  <h2>Review Your Application</h2>
+
+                  <p>
+                    The agent prepared this application package. Review the
+                    details before applying.
+                  </p>
+                </div>
+
+                <button
+                  className="application-agent-close"
+                  onClick={closeApplicationReview}
+                  aria-label="Close"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="application-agent-content">
+                <div className="application-review-section">
+                  <h3>Job</h3>
+
+                  <p>
+                    <strong>
+                      {applicationPackage.job?.title || "Job Opportunity"}
+                    </strong>
+                  </p>
+
+                  <p>
+                    {applicationPackage.job?.company || "Company not specified"}
+                  </p>
+
+                  {applicationPackage.job?.location && (
+                    <p>{applicationPackage.job.location}</p>
+                  )}
+                </div>
+
+                {applicationPackage.application_data && (
+                  <div className="application-review-section">
+                    <h3>Application Data</h3>
+
+                    <div className="application-review-grid">
+                      <div>
+                        <span>Job Title</span>
+
+                        <strong>
+                          {applicationPackage.application_data.job_title}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>Company</span>
+
+                        <strong>
+                          {applicationPackage.application_data.company}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>Resume Type</span>
+
+                        <strong>
+                          {applicationPackage.application_data.resume_type}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {applicationPackage.optimization?.optimization_summary && (
+                  <div className="application-review-section">
+                    <h3>Resume Optimization</h3>
+
+                    <p>
+                      {applicationPackage.optimization.optimization_summary}
+                    </p>
+                  </div>
+                )}
+
+                {applicationPackage.optimization?.safe_ats_keywords?.length >
+                  0 && (
+                  <div className="application-review-section">
+                    <h3>Safe ATS Keywords</h3>
+
+                    <div className="application-agent-tags">
+                      {applicationPackage.optimization.safe_ats_keywords.map(
+                        (keyword, index) => (
+                          <span key={index}>{keyword}</span>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {applicationPackage.optimization?.missing_requirements?.length >
+                  0 && (
+                  <div className="application-review-section">
+                    <h3>Missing Requirements</h3>
+
+                    <div className="application-agent-tags missing">
+                      {applicationPackage.optimization.missing_requirements.map(
+                        (requirement, index) => (
+                          <span key={index}>{requirement}</span>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {applicationPackage.optimization?.bullet_suggestions?.length >
+                  0 && (
+                  <div className="application-review-section">
+                    <h3>Resume Improvements</h3>
+
+                    <div className="application-agent-suggestions">
+                      {applicationPackage.optimization.bullet_suggestions.map(
+                        (suggestion, index) => (
+                          <div
+                            className="application-agent-suggestion"
+                            key={index}
+                          >
+                            <span>{suggestion.section || "Resume"}</span>
+
+                            <p>
+                              <strong>Current:</strong> {suggestion.original}
+                            </p>
+
+                            <p>
+                              <strong>Suggested:</strong> {suggestion.improved}
+                            </p>
+
+                            {suggestion.reason && (
+                              <small>{suggestion.reason}</small>
+                            )}
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="application-agent-approval">
+                  <strong>🔒 Human approval required</strong>
+
+                  <p>
+                    Nothing is submitted automatically. Review the application
+                    and explicitly choose whether to continue.
+                  </p>
+                </div>
+              </div>
+
+              <div className="application-agent-actions">
+                <button
+                  className="application-agent-approve"
+                  onClick={handleApproveAndTrack}
+                >
+                  <CheckCircle2 size={16} />
+                  Approve & Track Application
+                </button>
+                <button
+                  className="application-agent-cancel"
+                  onClick={closeApplicationReview}
+                >
+                  Close
+                </button>
+
+                <button
+                  className="application-agent-tailor"
+                  onClick={handleTailorFromApplication}
+                >
+                  <FileText size={16} />
+                  Tailor Resume
+                </button>
+
+                <button
+                  className="application-agent-apply"
+                  onClick={handleReviewAndApply}
+                >
+                  <ExternalLink size={16} />
+                  Review & Apply
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

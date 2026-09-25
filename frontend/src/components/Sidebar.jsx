@@ -4,6 +4,7 @@ import {
   BriefcaseBusiness,
   FileText,
   LogOut,
+  Map,
   MessageSquare,
   Settings,
   Sparkles,
@@ -35,9 +36,7 @@ function Sidebar() {
 
       <nav className="sidebar-nav">
         <button
-          className={`nav-item ${
-            isActive("/dashboard") ? "active" : ""
-          }`}
+          className={`nav-item ${isActive("/dashboard") ? "active" : ""}`}
           onClick={() => navigate("/dashboard")}
         >
           <BarChart3 size={18} />
@@ -45,9 +44,7 @@ function Sidebar() {
         </button>
 
         <button
-          className={`nav-item ${
-            isActive("/resumes") ? "active" : ""
-          }`}
+          className={`nav-item ${isActive("/resumes") ? "active" : ""}`}
           onClick={() => navigate("/resumes")}
         >
           <FileText size={18} />
@@ -55,9 +52,7 @@ function Sidebar() {
         </button>
 
         <button
-          className={`nav-item ${
-            isActive("/resume-builder") ? "active" : ""
-          }`}
+          className={`nav-item ${isActive("/resume-builder") ? "active" : ""}`}
           onClick={() => navigate("/resume-builder")}
         >
           <FileText size={18} />
@@ -65,9 +60,7 @@ function Sidebar() {
         </button>
 
         <button
-          className={`nav-item ${
-            isActive("/career-analysis") ? "active" : ""
-          }`}
+          className={`nav-item ${isActive("/career-analysis") ? "active" : ""}`}
           onClick={() => navigate("/career-analysis")}
         >
           <Sparkles size={18} />
@@ -75,9 +68,7 @@ function Sidebar() {
         </button>
 
         <button
-          className={`nav-item ${
-            isActive("/career-history") ? "active" : ""
-          }`}
+          className={`nav-item ${isActive("/career-history") ? "active" : ""}`}
           onClick={() => navigate("/career-history")}
         >
           <Sparkles size={18} />
@@ -85,9 +76,35 @@ function Sidebar() {
         </button>
 
         <button
+          className={`nav-item ${isActive("/career-roadmap") ? "active" : ""}`}
+          onClick={() => navigate("/career-roadmap")}
+        >
+          <Map size={18} />
+          Career Roadmap
+        </button>
+
+        <button
           className={`nav-item ${
-            isActive("/interview-prep") ? "active" : ""
+            isActive("/interview-simulator") ? "active" : ""
           }`}
+          onClick={() => navigate("/interview-simulator")}
+        >
+          <MessageSquare size={18} />
+          Interview Simulator
+        </button>
+
+        <button
+          className={`nav-item ${
+            isActive("/interview-history") ? "active" : ""
+          }`}
+          onClick={() => navigate("/interview-history")}
+        >
+          <MessageSquare size={18} />
+          Interview History
+        </button>
+
+        <button
+          className={`nav-item ${isActive("/interview-prep") ? "active" : ""}`}
           onClick={() => navigate("/interview-prep")}
         >
           <MessageSquare size={18} />
@@ -95,9 +112,7 @@ function Sidebar() {
         </button>
 
         <button
-          className={`nav-item ${
-            isActive("/jobs") ? "active" : ""
-          }`}
+          className={`nav-item ${isActive("/jobs") ? "active" : ""}`}
           onClick={() => navigate("/jobs")}
         >
           <BriefcaseBusiness size={18} />
@@ -106,9 +121,7 @@ function Sidebar() {
 
         <button
           className={`nav-item ${
-            isActive("/recommended-jobs")
-              ? "active"
-              : ""
+            isActive("/recommended-jobs") ? "active" : ""
           }`}
           onClick={() => navigate("/recommended-jobs")}
         >
@@ -117,9 +130,7 @@ function Sidebar() {
         </button>
 
         <button
-          className={`nav-item ${
-            isActive("/applications") ? "active" : ""
-          }`}
+          className={`nav-item ${isActive("/applications") ? "active" : ""}`}
           onClick={() => navigate("/applications")}
         >
           <BriefcaseBusiness size={18} />
@@ -127,9 +138,7 @@ function Sidebar() {
         </button>
 
         <button
-          className={`nav-item ${
-            isActive("/resume-chat") ? "active" : ""
-          }`}
+          className={`nav-item ${isActive("/resume-chat") ? "active" : ""}`}
           onClick={() => navigate("/resume-chat")}
         >
           <MessageSquare size={18} />
@@ -138,9 +147,7 @@ function Sidebar() {
 
         <button
           className={`nav-item ${
-            isActive("/resume-intelligence")
-              ? "active"
-              : ""
+            isActive("/resume-intelligence") ? "active" : ""
           }`}
           onClick={() => navigate("/resume-intelligence")}
         >
@@ -149,9 +156,7 @@ function Sidebar() {
         </button>
 
         <button
-          className={`nav-item ${
-            isActive("/settings") ? "active" : ""
-          }`}
+          className={`nav-item ${isActive("/settings") ? "active" : ""}`}
           onClick={() => navigate("/settings")}
         >
           <Settings size={18} />
@@ -160,10 +165,7 @@ function Sidebar() {
       </nav>
 
       <div className="sidebar-bottom">
-        <button
-          className="nav-item logout"
-          onClick={logout}
-        >
+        <button className="nav-item logout" onClick={logout}>
           <LogOut size={18} />
           Logout
         </button>

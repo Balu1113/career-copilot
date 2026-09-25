@@ -18,6 +18,9 @@ import ResumeBuilder from "./pages/ResumeBuilder";
 import ResumeEdit from "./pages/ResumeEdit";
 import Jobs from "./pages/Jobs";
 import RecommendedJobs from "./pages/RecommendedJobs";
+import CareerRoadmap from "./pages/CareerRoadmap";
+import InterviewSimulator from "./pages/InterviewSimulator";
+import InterviewHistory from "./pages/InterviewHistory";
 
 function App() {
   return (
@@ -181,6 +184,32 @@ function App() {
           element={
             <ProtectedRoute>
               <RecommendedJobs />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/career-roadmap"
+          element={
+            <ProtectedRoute>
+              <CareerRoadmap />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/interview-simulator"
+          element={
+            <ProtectedRoute>
+              <InterviewSimulator />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/interview-history"
+          element={
+            <ProtectedRoute>
+              <InterviewHistory />
             </ProtectedRoute>
           }
         />

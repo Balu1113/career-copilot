@@ -400,3 +400,173 @@
     width: 100%;
   }
 }
+
+
+.prepare-application-btn {
+  border: 0;
+  cursor: pointer;
+  padding: 9px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.prepare-application-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.application-agent-error {
+  margin: 16px 0;
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+
+.application-agent-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.application-agent-modal {
+  width: min(760px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.application-agent-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.application-agent-badge {
+  display: inline-block;
+  margin-bottom: 8px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.application-agent-header h2 {
+  margin: 0 0 6px;
+}
+
+.application-agent-header p {
+  margin: 0;
+}
+
+.application-agent-close {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 22px;
+}
+
+.application-agent-content {
+  padding: 24px;
+}
+
+.application-review-section {
+  margin-bottom: 22px;
+}
+
+.application-review-section h3 {
+  margin: 0 0 10px;
+}
+
+.application-review-section p {
+  margin: 5px 0;
+}
+
+.application-review-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.application-review-grid > div {
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.application-review-grid span {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12px;
+}
+
+.application-review-grid strong {
+  display: block;
+}
+
+.application-agent-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.application-agent-tags span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.application-agent-approval {
+  padding: 16px;
+  border-radius: 10px;
+}
+
+.application-agent-approval span {
+  font-weight: 700;
+}
+
+.application-agent-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 18px 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.application-agent-actions button {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .application-review-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .application-agent-actions {
+    flex-direction: column;
+  }
+}
+
+.application-agent-approve {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}

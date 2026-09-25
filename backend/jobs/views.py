@@ -1,12 +1,12 @@
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
+from django.utils import timezone
 from .models import JobApplication
 from .serializers import JobApplicationSerializer
 from .services.job_provider import IndianAPIJobProvider
 from .services.job_recommender import JobRecommender
-
+from jobs.services.application_analytics import get_application_analytics
 
 class JobApplicationListCreateView(
     generics.ListCreateAPIView
@@ -24,7 +24,13 @@ class JobApplicationListCreateView(
             user=self.request.user
         )
 
+class ApplicationAnalyticsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
 
+    def get(self, request):
+        analytics = get_application_analytics(request.user)
+        return Response(analytics)
+    
 class JobApplicationDetailView(
     generics.RetrieveUpdateDestroyAPIView
 ):
@@ -317,3 +323,41 @@ class RecommendedJobsView(APIView):
                 {"detail": "Unable to recommend jobs."},
                 status=500,
             )
+        
+
+class ApproveApplicationView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        company = request.data.get("company", "").strip()
+        job_title = request.data.get("job_title", "").strip()
+
+        if not company:
+            return Response(
+                {"detail": "Company is required."},
+                status=400,
+            )
+
+        if not job_title:
+            return Response(
+                {"detail": "Job title is required."},
+                status=400,
+            )
+
+        application = JobApplication.objects.create(
+            user=request.user,
+            company=company,
+            job_title=job_title,
+            job_url=request.data.get("job_url") or None,
+            status="applied",
+            applied_date=timezone.localdate(),
+            follow_up_date=request.data.get("follow_up_date") or None,
+            notes=request.data.get("notes", ""),
+        )
+
+        serializer = JobApplicationSerializer(application)
+
+        return Response(
+            serializer.data,
+            status=201,
+        )

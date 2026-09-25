@@ -39,6 +39,8 @@ class JobApplication(models.Model):
     notes = models.TextField(
         blank=True,
     )
+    
+    follow_up_date = models.DateField(blank=True, null=True)
 
     created_at = models.DateTimeField(
         auto_now_add=True,

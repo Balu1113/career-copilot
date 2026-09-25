@@ -167,3 +167,19 @@ class InterviewAnswerEvaluation(BaseModel):
     missing_points: list[str]
     improvement_suggestions: list[str]
     ideal_answer_points: list[str]
+
+
+class ResumeBulletSuggestion(BaseModel):
+    section: str
+    original: str
+    improved: str
+    reason: str
+
+
+class ResumeOptimization(BaseModel):
+    supported_requirements: list[str]
+    missing_requirements: list[str]
+    sections_to_improve: list[str]
+    bullet_suggestions: list[ResumeBulletSuggestion]
+    safe_ats_keywords: list[str]
+    optimization_summary: str

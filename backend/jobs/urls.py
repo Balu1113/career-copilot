@@ -5,6 +5,8 @@ from .views import (
     JobApplicationListCreateView,
     JobSearchView,
     RecommendedJobsView,
+    ApplicationAnalyticsView,
+    ApproveApplicationView
 )
 
 
@@ -31,5 +33,17 @@ urlpatterns = [
         "recommended/",
         RecommendedJobsView.as_view(),
         name="recommended-jobs",
+    ),
+
+    path(
+        "analytics/",
+        ApplicationAnalyticsView.as_view(),
+        name="application-analytics",
+    ),
+
+    path(
+        "approve-application/",
+        ApproveApplicationView.as_view(),
+        name="approve-application",
     ),
 ]

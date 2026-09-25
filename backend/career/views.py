@@ -1,6 +1,6 @@
 import json
-
 from django.http import StreamingHttpResponse
+from django.shortcuts import get_object_or_404
 
 from rest_framework import permissions, status
 from rest_framework.response import Response
@@ -23,7 +23,7 @@ from rag.services.vector_store import load_resume_vector_store
 from agents.services.agent_stream import stream_career_analysis
 from agents.services.interview_evaluator import evaluate_interview_answer
 
-from .models import CareerAnalysis
+from career.models import CareerAnalysis, CareerRoadmap, InterviewSession
 
 from .serializers import (
     CareerAnalysisSerializer,
@@ -33,6 +33,12 @@ from .serializers import (
 )
 
 from .services.interview_prep import generate_interview_prep
+from .services.resume_optimizer import optimize_resume_for_job
+from .services.roadmap_generator import generate_career_roadmap
+from .services.interview_simulator import (
+    create_interview_session,
+    submit_interview_answer,
+)
 
 
 class InterviewPrepView(APIView):
@@ -650,7 +656,7 @@ class InterviewAnswerEvaluationView(APIView):
                     "question": question,
                     "category": category,
                     "difficulty": difficulty,
-                    "evaluation": result.model_dump(),
+                    "evaluation": result,
                 }
             )
 
@@ -664,3 +670,446 @@ class InterviewAnswerEvaluationView(APIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class ResumeOptimizationView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        resume_id = request.data.get("resume_id")
+        resume_type = request.data.get("resume_type", "uploaded")
+        job_description = request.data.get("job_description", "")
+        job_requirements = request.data.get("job_requirements", {})
+
+        if not resume_id:
+            return Response(
+                {"error": "resume_id is required."},
+                status=400,
+            )
+
+        if not job_description:
+            return Response(
+                {"error": "job_description is required."},
+                status=400,
+            )
+
+        if resume_type == "uploaded":
+            resume = get_object_or_404(
+                Resume,
+                id=resume_id,
+                user=request.user,
+            )
+
+            resume_context = resume.extracted_text
+
+        else:
+            generated = get_object_or_404(
+                GeneratedResume,
+                id=resume_id,
+                user=request.user,
+            )
+
+            resume_context = generated_resume_to_text(
+                generated.content
+            )
+
+        if not resume_context or not resume_context.strip():
+            return Response(
+                {
+                    "error": (
+                        "Resume content is empty. Please select a resume "
+                        "with usable text."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            result = optimize_resume_for_job(
+                resume_context=resume_context,
+                job_description=job_description,
+                job_requirements=job_requirements,
+            )
+
+            return Response(result)
+
+        except Exception as exc:
+            return Response(
+                {"error": str(exc)},
+                status=500,
+            )
+
+
+class CareerRoadmapView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        analysis_id = request.data.get("analysis_id")
+        target_role = request.data.get("target_role") or ""
+
+        if not analysis_id:
+            return Response(
+                {"detail": "analysis_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not isinstance(target_role, str):
+            return Response(
+                {"detail": "target_role must be a string."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        target_role = target_role.strip()
+
+        try:
+            analysis = CareerAnalysis.objects.get(
+                id=analysis_id,
+                user=request.user,
+            )
+        except (
+            CareerAnalysis.DoesNotExist,
+            TypeError,
+            ValueError,
+        ):
+            return Response(
+                {"detail": "Career analysis not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            roadmap_data = generate_career_roadmap(
+                skill_gap_analysis=analysis.skill_gap_analysis,
+                career_recommendation=analysis.career_recommendation,
+                resume_intelligence=analysis.resume_intelligence,
+                job_description=analysis.job_description,
+                target_role=target_role,
+            )
+
+            roadmap = CareerRoadmap.objects.create(
+                user=request.user,
+                career_analysis=analysis,
+                title=roadmap_data["title"],
+                target_role=(
+                    roadmap_data.get("target_role")
+                    or target_role
+                    or "Target Career Role"
+                ),
+                roadmap_data=roadmap_data,
+            )
+
+            return Response(
+                {
+                    "id": roadmap.id,
+                    "title": roadmap.title,
+                    "target_role": roadmap.target_role,
+                    "roadmap": roadmap.roadmap_data,
+                    "career_analysis_id": analysis.id,
+                    "created_at": roadmap.created_at,
+                    "updated_at": roadmap.updated_at,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        except Exception as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+class CareerRoadmapListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        roadmaps = CareerRoadmap.objects.filter(
+            user=request.user
+        ).order_by("-created_at")
+
+        data = []
+
+        for roadmap in roadmaps:
+            data.append(
+                {
+                    "id": roadmap.id,
+                    "title": roadmap.title,
+                    "target_role": roadmap.target_role,
+                    "roadmap": roadmap.roadmap_data,
+                    "career_analysis_id": (
+                        roadmap.career_analysis_id
+                    ),
+                    "created_at": roadmap.created_at,
+                    "updated_at": roadmap.updated_at,
+                }
+            )
+
+        return Response(data)
+
+
+class CareerRoadmapDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, roadmap_id):
+        try:
+            roadmap = CareerRoadmap.objects.get(
+                id=roadmap_id,
+                user=request.user,
+            )
+        except CareerRoadmap.DoesNotExist:
+            return Response(
+                {"detail": "Career roadmap not found."},
+                status=404,
+            )
+
+        return Response(
+            {
+                "id": roadmap.id,
+                "title": roadmap.title,
+                "target_role": roadmap.target_role,
+                "roadmap": roadmap.roadmap_data,
+                "career_analysis_id": (
+                    roadmap.career_analysis_id
+                ),
+                "created_at": roadmap.created_at,
+                "updated_at": roadmap.updated_at,
+            }
+        )
+
+
+class StartInterviewView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        analysis_id = request.data.get("analysis_id")
+        target_role = request.data.get("target_role", "")
+        interview_type = request.data.get(
+            "interview_type",
+            "mixed",
+        )
+
+        if not analysis_id:
+            return Response(
+                {"detail": "analysis_id is required."},
+                status=400,
+            )
+
+        allowed_types = {
+            "mixed",
+            "technical",
+            "project",
+            "gap_based",
+            "behavioral",
+        }
+
+        if interview_type not in allowed_types:
+            return Response(
+                {
+                    "detail": (
+                        "Invalid interview_type. "
+                        "Choose mixed, technical, project, "
+                        "gap_based, or behavioral."
+                    )
+                },
+                status=400,
+            )
+
+        try:
+            career_analysis = CareerAnalysis.objects.get(
+                id=analysis_id,
+                user=request.user,
+            )
+        except CareerAnalysis.DoesNotExist:
+            return Response(
+                {"detail": "Career analysis not found."},
+                status=404,
+            )
+
+        try:
+            session = create_interview_session(
+                user=request.user,
+                career_analysis=career_analysis,
+                target_role=target_role,
+                interview_type=interview_type,
+            )
+
+            questions = session.questions or []
+
+            if not questions:
+                return Response(
+                    {"detail": "No interview questions available."},
+                    status=400,
+                )
+
+            current_question = questions[0]
+
+            return Response(
+                {
+                    "session_id": session.id,
+                    "target_role": session.target_role,
+                    "interview_type": session.interview_type,
+                    "total_questions": len(questions),
+                    "current_question_index": 0,
+                    "question": current_question,
+                    "completed": session.completed,
+                },
+                status=201,
+            )
+
+        except Exception as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=400,
+            )
+
+
+class SubmitInterviewAnswerView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        session_id = request.data.get("session_id")
+        answer = request.data.get("answer", "")
+
+        if not session_id:
+            return Response(
+                {"detail": "session_id is required."},
+                status=400,
+            )
+
+        if not isinstance(answer, str) or not answer.strip():
+            return Response(
+                {"detail": "Answer is required."},
+                status=400,
+            )
+
+        try:
+            result = submit_interview_answer(
+                user=request.user,
+                session_id=session_id,
+                answer=answer,
+            )
+
+            return Response(
+                result,
+                status=200,
+            )
+
+        except ValueError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=400,
+            )
+
+        except Exception as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=500,
+            )
+
+
+class InterviewSessionDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, session_id):
+        session = get_object_or_404(
+            InterviewSession,
+            id=session_id,
+            user=request.user,
+        )
+        questions = session.questions or []
+        current_question = None
+
+        if (
+            not session.completed
+            and session.current_question_index < len(questions)
+        ):
+            current_question = questions[
+                session.current_question_index
+            ]
+
+        return Response(
+            {
+                "session_id": session.id,
+                "career_analysis_id": session.career_analysis_id,
+                "target_role": session.target_role,
+                "interview_type": session.interview_type,
+                "total_questions": len(questions),
+                "current_question_index": (
+                    session.current_question_index
+                ),
+                "question": current_question,
+                "completed": session.completed,
+                "overall_score": session.overall_score,
+            }
+        )
+
+
+class InterviewHistoryView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        sessions = (
+            InterviewSession.objects
+            .filter(user=request.user)
+            .select_related("career_analysis")
+            .prefetch_related("responses")
+            .order_by("-created_at")
+        )
+
+        results = []
+
+        for session in sessions:
+            responses = list(
+                session.responses.all().order_by("question_index")
+            )
+
+            response_data = []
+
+            for response in responses:
+                response_data.append(
+                    {
+                        "id": response.id,
+                        "question_index": response.question_index,
+                        "question": response.question,
+                        "category": response.category,
+                        "difficulty": response.difficulty,
+                        "answer": response.answer,
+                        "score": response.score,
+                        "evaluation": response.evaluation,
+                        "created_at": response.created_at,
+                    }
+                )
+
+            scores = [
+                response.score
+                for response in responses
+                if response.score is not None
+            ]
+
+            results.append(
+                {
+                    "id": session.id,
+                    "career_analysis_id": (
+                        session.career_analysis_id
+                    ),
+                    "target_role": session.target_role,
+                    "interview_type": session.interview_type,
+                    "total_questions": len(
+                        session.questions or []
+                    ),
+                    "answered_questions": len(responses),
+                    "current_question_index": (
+                        session.current_question_index
+                    ),
+                    "completed": session.completed,
+                    "overall_score": session.overall_score,
+                    "average_answer_score": (
+                        round(sum(scores) / len(scores))
+                        if scores
+                        else None
+                    ),
+                    "created_at": session.created_at,
+                    "completed_at": session.completed_at,
+                    "responses": response_data,
+                }
+            )
+
+        return Response(results)

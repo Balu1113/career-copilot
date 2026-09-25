@@ -376,3 +376,104 @@
   background: #fef3f2;
   color: #d92d20;
 }
+
+.application-analytics-section {
+  margin-bottom: 28px;
+}
+
+.analytics-section-header {
+  margin-bottom: 16px;
+}
+
+.analytics-section-header h2 {
+  margin: 0 0 4px;
+}
+
+.analytics-section-header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.analytics-loading {
+  padding: 24px;
+  text-align: center;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.application-stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 14px;
+}
+
+.application-stat-card {
+  min-width: 0;
+}
+
+.application-conversion {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+  padding: 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.application-conversion > div {
+  min-width: 0;
+}
+
+.application-conversion span {
+  display: block;
+  margin-bottom: 5px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.application-conversion strong {
+  font-size: 18px;
+}
+
+.follow-up-overdue {
+  font-weight: 600;
+}
+
+.follow-up-today {
+  font-weight: 600;
+}
+
+.follow-up-upcoming {
+  font-weight: 500;
+}
+
+.application-modal .form-group small {
+  display: block;
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+@media (max-width: 1200px) {
+  .application-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .application-conversion {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .application-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .application-conversion {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

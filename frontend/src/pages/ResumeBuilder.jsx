@@ -211,6 +211,9 @@ function ResumeBuilder() {
   const incomingJobDescription =
     location.state?.jobDescription || "";
 
+  const incomingOptimization =
+    location.state?.optimization || null;
+
   const [sourceType, setSourceType] =
     useState("existing_resume");
 
@@ -232,6 +235,12 @@ function ResumeBuilder() {
 
   const [jobDescription, setJobDescription] =
     useState("");
+
+  const [optimization, setOptimization] =
+    useState(incomingOptimization);
+
+  const [appliedOptimizationIndexes, setAppliedOptimizationIndexes] =
+    useState([]);
 
   const [resumeContent, setResumeContent] =
     useState(emptyResumeContent);
@@ -315,6 +324,11 @@ function ResumeBuilder() {
               setJobDescription(incomingJobDescription);
             }
 
+            if (incomingOptimization) {
+              setOptimization(incomingOptimization);
+              setAppliedOptimizationIndexes([]);
+            }
+
             // Use the first saved template automatically. The user can
             // still change it before generating the tailored resume.
             if (templateData.length > 0) {
@@ -342,6 +356,7 @@ function ResumeBuilder() {
     incomingResumeId,
     incomingResumeType,
     incomingJobDescription,
+    incomingOptimization,
   ]);
 
   const handleSourceChange = (type) => {
@@ -1207,6 +1222,83 @@ function ResumeBuilder() {
     });
   };
 
+  const applyOptimizationSuggestion = (suggestion, suggestionIndex) => {
+    if (!suggestion?.improved) {
+      return;
+    }
+
+    const original = String(suggestion.original || "").trim();
+    const section = String(suggestion.section || "").toLowerCase();
+
+    let applied = false;
+
+    setResumeContent((prev) => {
+      const next = {
+        ...prev,
+        experience: (prev.experience || []).map((item) => {
+          const bullets = (item.bullets || []).map((bullet) => {
+            if (
+              !applied &&
+              original &&
+              String(bullet || "").trim() === original
+            ) {
+              applied = true;
+              return suggestion.improved;
+            }
+            return bullet;
+          });
+
+          return { ...item, bullets };
+        }),
+        projects: (prev.projects || []).map((item) => {
+          const bullets = (item.bullets || []).map((bullet) => {
+            if (
+              !applied &&
+              original &&
+              String(bullet || "").trim() === original
+            ) {
+              applied = true;
+              return suggestion.improved;
+            }
+            return bullet;
+          });
+
+          return { ...item, bullets };
+        }),
+      };
+
+      if (
+        !applied &&
+        original &&
+        (section.includes("summary") ||
+          section.includes("professional"))
+      ) {
+        const currentSummary = String(prev.summary || "").trim();
+
+        if (!currentSummary || currentSummary === original) {
+          applied = true;
+          next.summary = suggestion.improved;
+        }
+      }
+
+      return next;
+    });
+
+    if (applied) {
+      setAppliedOptimizationIndexes((previous) =>
+        previous.includes(suggestionIndex)
+          ? previous
+          : [...previous, suggestionIndex]
+      );
+      setSuccess("Optimization suggestion applied to the resume.");
+      setError("");
+    } else {
+      setError(
+        "This suggestion could not be matched to an existing resume bullet. Review it manually before applying."
+      );
+    }
+  };
+
   const renderResumePreview = () => {
     const personal = resumeContent.personal || {};
     const skillEntries = Object.entries(
@@ -1954,6 +2046,207 @@ function ResumeBuilder() {
           font-size: 11px;
         }
 
+        .rb-optimization-panel {
+          padding: 20px;
+          margin-bottom: 20px;
+          border: 1px solid #dddfff;
+          border-radius: 15px;
+          background: linear-gradient(135deg, #f7f7ff 0%, #fcfaff 100%);
+          box-shadow: 0 8px 24px rgba(79, 70, 229, 0.06);
+        }
+
+        .rb-optimization-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 16px;
+        }
+
+        .rb-optimization-title {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .rb-optimization-title svg {
+          color: #5b5ce2;
+        }
+
+        .rb-optimization-title h3 {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 750;
+        }
+
+        .rb-optimization-header p {
+          margin: 5px 0 0;
+          color: #6b7280;
+          font-size: 12px;
+          line-height: 1.55;
+        }
+
+        .rb-optimization-badge {
+          flex: 0 0 auto;
+          padding: 6px 9px;
+          border-radius: 999px;
+          color: #047857;
+          background: #ecfdf5;
+          border: 1px solid #bbf7d0;
+          font-size: 10px;
+          font-weight: 750;
+        }
+
+        .rb-optimization-summary {
+          padding: 13px;
+          margin-bottom: 14px;
+          border: 1px solid #e4e5ff;
+          border-radius: 11px;
+          background: white;
+        }
+
+        .rb-optimization-summary strong,
+        .rb-optimization-section > strong {
+          display: block;
+          margin-bottom: 7px;
+          color: #374151;
+          font-size: 12px;
+        }
+
+        .rb-optimization-summary p {
+          margin: 0;
+          color: #4b5563;
+          font-size: 12px;
+          line-height: 1.6;
+        }
+
+        .rb-optimization-section {
+          margin-top: 15px;
+        }
+
+        .rb-optimization-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 7px;
+        }
+
+        .rb-optimization-tag {
+          padding: 5px 9px;
+          border-radius: 999px;
+          color: #3730a3;
+          background: #eef2ff;
+          border: 1px solid #dfe3ff;
+          font-size: 10px;
+          font-weight: 650;
+        }
+
+        .rb-optimization-tag.missing {
+          color: #b42318;
+          background: #fff1f2;
+          border-color: #fecdd3;
+        }
+
+        .rb-optimization-section-heading {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          margin-bottom: 9px;
+        }
+
+        .rb-optimization-section-heading strong {
+          color: #374151;
+          font-size: 12px;
+        }
+
+        .rb-optimization-section-heading span {
+          color: #7b8495;
+          font-size: 10px;
+          font-weight: 650;
+        }
+
+        .rb-optimization-suggestions {
+          display: grid;
+          gap: 10px;
+        }
+
+        .rb-optimization-suggestion {
+          padding: 14px;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          background: white;
+        }
+
+        .rb-optimization-suggestion-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 10px;
+        }
+
+        .rb-optimization-section-name {
+          color: #4f46e5;
+          font-size: 11px;
+          font-weight: 750;
+        }
+
+        .rb-optimization-current,
+        .rb-optimization-improved {
+          padding: 10px 11px;
+          margin-top: 8px;
+          border-radius: 9px;
+        }
+
+        .rb-optimization-current {
+          background: #f8fafc;
+          border: 1px solid #e5e7eb;
+        }
+
+        .rb-optimization-improved {
+          background: #f0fdf4;
+          border: 1px solid #bbf7d0;
+        }
+
+        .rb-optimization-current span,
+        .rb-optimization-improved span {
+          display: block;
+          margin-bottom: 4px;
+          font-size: 10px;
+          font-weight: 750;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+
+        .rb-optimization-current span {
+          color: #6b7280;
+        }
+
+        .rb-optimization-improved span {
+          color: #047857;
+        }
+
+        .rb-optimization-current p,
+        .rb-optimization-improved p {
+          margin: 0;
+          color: #374151;
+          font-size: 11px;
+          line-height: 1.55;
+        }
+
+        .rb-optimization-reason {
+          margin-top: 9px;
+          color: #6b7280;
+          font-size: 10px;
+          line-height: 1.5;
+        }
+
+        .rb-optimization-suggestion-top .rb-button {
+          flex: 0 0 auto;
+          padding: 8px 11px;
+          font-size: 10px;
+        }
+
         .rb-editor-shell {
           overflow: visible;
         }
@@ -2303,6 +2596,16 @@ function ResumeBuilder() {
 
           .rb-editor-actions {
             flex-wrap: wrap;
+          }
+
+          .rb-optimization-header,
+          .rb-optimization-suggestion-top {
+            align-items: stretch;
+            flex-direction: column;
+          }
+
+          .rb-optimization-suggestion-top .rb-button {
+            width: 100%;
           }
 
           .rb-card {
@@ -2845,6 +3148,150 @@ function ResumeBuilder() {
                   <div className="rb-alert rb-alert-success">
                     <CheckCircle2 size={16} />
                     <span>{success}</span>
+                  </div>
+                )}
+
+                {optimization && (
+                  <div className="rb-optimization-panel">
+                    <div className="rb-optimization-header">
+                      <div>
+                        <div className="rb-optimization-title">
+                          <Sparkles size={17} />
+                          <h3>AI Resume Optimization</h3>
+                        </div>
+                        <p>
+                          Review the suggestions from Career Analysis. Only
+                          apply changes that accurately represent your existing
+                          experience.
+                        </p>
+                      </div>
+
+                      <span className="rb-optimization-badge">
+                        Evidence-based
+                      </span>
+                    </div>
+
+                    {optimization.optimization_summary && (
+                      <div className="rb-optimization-summary">
+                        <strong>Summary</strong>
+                        <p>{optimization.optimization_summary}</p>
+                      </div>
+                    )}
+
+                    {optimization.missing_requirements?.length > 0 && (
+                      <div className="rb-optimization-section">
+                        <strong>Missing Requirements</strong>
+                        <div className="rb-optimization-tags">
+                          {optimization.missing_requirements.map(
+                            (item, index) => (
+                              <span
+                                className="rb-optimization-tag missing"
+                                key={index}
+                              >
+                                {item}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {optimization.safe_ats_keywords?.length > 0 && (
+                      <div className="rb-optimization-section">
+                        <strong>Safe ATS Keywords</strong>
+                        <div className="rb-optimization-tags">
+                          {optimization.safe_ats_keywords.map(
+                            (item, index) => (
+                              <span
+                                className="rb-optimization-tag"
+                                key={index}
+                              >
+                                {item}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {optimization.bullet_suggestions?.length > 0 && (
+                      <div className="rb-optimization-section">
+                        <div className="rb-optimization-section-heading">
+                          <strong>Suggested Bullet Improvements</strong>
+                          <span>
+                            {appliedOptimizationIndexes.length}/
+                            {optimization.bullet_suggestions.length} applied
+                          </span>
+                        </div>
+
+                        <div className="rb-optimization-suggestions">
+                          {optimization.bullet_suggestions.map(
+                            (suggestion, index) => {
+                              const applied =
+                                appliedOptimizationIndexes.includes(index);
+
+                              return (
+                                <div
+                                  className="rb-optimization-suggestion"
+                                  key={index}
+                                >
+                                  <div className="rb-optimization-suggestion-top">
+                                    <span className="rb-optimization-section-name">
+                                      {suggestion.section || "Resume"}
+                                    </span>
+
+                                    <button
+                                      type="button"
+                                      className={`rb-button ${
+                                        applied
+                                          ? "rb-button-secondary"
+                                          : "rb-button-primary"
+                                      }`}
+                                      disabled={applied}
+                                      onClick={() =>
+                                        applyOptimizationSuggestion(
+                                          suggestion,
+                                          index
+                                        )
+                                      }
+                                    >
+                                      {applied ? (
+                                        <>
+                                          <CheckCircle2 size={14} />
+                                          Applied
+                                        </>
+                                      ) : (
+                                        <>
+                                          <CheckCircle2 size={14} />
+                                          Apply Suggestion
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+
+                                  <div className="rb-optimization-current">
+                                    <span>Current</span>
+                                    <p>{suggestion.original}</p>
+                                  </div>
+
+                                  <div className="rb-optimization-improved">
+                                    <span>Suggested</span>
+                                    <p>{suggestion.improved}</p>
+                                  </div>
+
+                                  {suggestion.reason && (
+                                    <div className="rb-optimization-reason">
+                                      <strong>Why:</strong>{" "}
+                                      {suggestion.reason}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            }
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

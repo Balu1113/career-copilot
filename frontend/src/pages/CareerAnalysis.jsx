@@ -86,6 +86,9 @@ function CareerAnalysis() {
   const [currentNode, setCurrentNode] = useState("");
   const [completedNodes, setCompletedNodes] = useState([]);
   const [generating, setGenerating] = useState(false);
+  const [optimization, setOptimization] = useState(null);
+  const [optimizationLoading, setOptimizationLoading] = useState(false);
+  const [optimizationError, setOptimizationError] = useState("");
 
   const [error, setError] = useState("");
 
@@ -303,6 +306,63 @@ function CareerAnalysis() {
       setGenerating(false);
     }
   };
+
+  const optimizeResume = async () => {
+  if (!resumeId) {
+    setOptimizationError("Please select a resume.");
+    return;
+  }
+
+  if (!jobDescription.trim()) {
+    setOptimizationError("Please enter a job description.");
+    return;
+  }
+
+  try {
+    setOptimizationLoading(true);
+    setOptimizationError("");
+    setOptimization(null);
+
+    const token = localStorage.getItem("access_token");
+
+    const [resumeType, selectedResumeId] = String(resumeId).split(":");
+
+    const response = await fetch(
+      "http://127.0.0.1:8000/api/career/optimize-resume/",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          resume_id: Number(selectedResumeId),
+          resume_type: resumeType || "uploaded",
+          job_description: jobDescription,
+          job_requirements: result?.job_requirements || {},
+        }),
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error ||
+          data.detail ||
+          "Unable to optimize resume.",
+      );
+    }
+
+    setOptimization(data);
+  } catch (err) {
+    setOptimizationError(
+      err.message || "Unable to optimize resume.",
+    );
+  } finally {
+    setOptimizationLoading(false);
+  }
+};
 
   return (
     <div className="dashboard-layout">
@@ -616,6 +676,51 @@ function CareerAnalysis() {
               title="Career Recommendations"
               data={result.career_recommendation}
             />
+
+            <div className="resume-optimization-action">
+              <div>
+                <h3>Resume Optimization</h3>
+                <p>
+                  Identify resume improvements for this job while keeping your
+                  existing experience and evidence intact.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="optimize-resume-btn"
+                onClick={optimizeResume}
+                disabled={optimizationLoading}
+              >
+                {optimizationLoading ? (
+                  <>
+                    <Loader2 size={17} className="spinning" />
+                    Optimizing Resume...
+                  </>
+                ) : (
+                  <>
+                    <Lightbulb size={17} />
+                    Optimize Resume
+                  </>
+                )}
+              </button>
+            </div>
+
+            {optimizationError && (
+              <div className="career-analysis-error">
+                {optimizationError}
+              </div>
+            )}
+
+            {optimization && (
+              <ResumeOptimizationCard
+                data={optimization}
+                resumeId={resumeId}
+                jobDescription={jobDescription}
+                selectedJob={selectedJob}
+                navigate={navigate}
+              />
+            )}
 
             <ResultObject
               title="Interview Preparation"
@@ -1139,6 +1244,152 @@ function RecommendedProjects({ projects = [] }) {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function ResumeOptimizationCard({
+  data,
+  resumeId,
+  jobDescription,
+  selectedJob,
+  navigate,
+}) {
+  return (
+    <div className="career-result-card resume-optimization-card">
+      <h3>Resume Optimization</h3>
+
+      {data.optimization_summary && (
+        <div className="career-result-item">
+          <span className="result-key">Optimization Summary</span>
+
+          <div className="analysis-explanation">
+            {data.optimization_summary}
+          </div>
+        </div>
+      )}
+
+      {data.supported_requirements?.length > 0 && (
+        <div className="career-result-item">
+          <span className="result-key">Supported Requirements</span>
+
+          <div className="result-tags">
+            {data.supported_requirements.map((item, index) => (
+              <span className="result-tag success" key={index}>
+                ✓ {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.missing_requirements?.length > 0 && (
+        <div className="career-result-item">
+          <span className="result-key">Missing Requirements</span>
+
+          <div className="result-tags">
+            {data.missing_requirements.map((item, index) => (
+              <span className="result-tag danger" key={index}>
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.sections_to_improve?.length > 0 && (
+        <div className="career-result-item">
+          <span className="result-key">Sections to Improve</span>
+
+          <div className="result-tags">
+            {data.sections_to_improve.map((item, index) => (
+              <span className="result-tag warning" key={index}>
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.bullet_suggestions?.length > 0 && (
+        <div className="career-result-item">
+          <span className="result-key">Suggested Bullet Improvements</span>
+
+          <div className="bullet-suggestion-list">
+            {data.bullet_suggestions.map((item, index) => (
+              <div className="bullet-suggestion-card" key={index}>
+                <div className="bullet-suggestion-header">
+                  <strong>{item.section}</strong>
+                </div>
+
+                <div className="bullet-original">
+                  <span>Current</span>
+                  <p>{item.original}</p>
+                </div>
+
+                <div className="bullet-improved">
+                  <span>Suggested</span>
+                  <p>{item.improved}</p>
+                </div>
+
+                {item.reason && (
+                  <div className="bullet-reason">
+                    <strong>Why:</strong> {item.reason}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.safe_ats_keywords?.length > 0 && (
+        <div className="career-result-item">
+          <span className="result-key">Safe ATS Keywords</span>
+
+          <div className="result-tags">
+            {data.safe_ats_keywords.map((keyword, index) => (
+              <span className="result-tag" key={index}>
+                {keyword}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="resume-optimization-footer">
+        <div>
+          <strong>Ready to tailor your resume?</strong>
+          <p>
+            Open Resume Builder with this job and optimization context.
+            Your existing resume will not be overwritten automatically.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className="tailor-resume-btn"
+          onClick={() => {
+            const [selectedResumeType] = String(resumeId).split(":");
+
+            navigate("/resume-builder", {
+              state: {
+                mode: "modifier",
+                resumeId,
+                resumeType: selectedResumeType || "uploaded",
+                jobDescription,
+                jobTitle: selectedJob?.title || "",
+                company: selectedJob?.company || "",
+                location: selectedJob?.location || "",
+                jobUrl: selectedJob?.jobUrl || "",
+                optimization: data,
+              },
+            });
+          }}
+        >
+          Tailor Resume with These Suggestions
+        </button>
       </div>
     </div>
   );
