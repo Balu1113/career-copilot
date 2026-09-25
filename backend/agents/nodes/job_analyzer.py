@@ -1187,7 +1187,7 @@ Return ONLY valid JSON matching the JobRequirements schema.
         schema=JobRequirements,
     )
 
-    result_data = result.model_dump()
+    result_data = result
 
     # ==================================================
     # FILTER LLM OUTPUT AGAINST THE JD

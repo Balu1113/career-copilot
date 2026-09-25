@@ -67,13 +67,6 @@ def stream_career_analysis(resume_context, job_description, resume_intelligence,
 
                         return
 
-        # -----------------------------------------
-        # Workflow completed
-        # -----------------------------------------
-        yield {
-            "type": "completed",
-        }
-
     except Exception as exc:
         yield {
             "type": "workflow_error",

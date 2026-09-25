@@ -307,25 +307,30 @@ Do not omit any supplied requirement.
 
     decisions = {}
 
-    for decision in result.decisions:
+    for decision in result.get("decisions", []):
 
-        if not isinstance(decision.skill, str):
+        if not isinstance(decision, dict):
+            continue
+
+        skill = decision.get("skill")
+        classification = decision.get("classification")
+        basis = decision.get("evidence_basis")
+
+        if not isinstance(skill, str):
             continue
 
         skill_key = canonicalize(
-            decision.skill
+            skill
         )
 
         if not skill_key:
             continue
 
-        if decision.classification not in {
+        if classification not in {
             "partial",
             "missing",
         }:
             continue
-
-        basis = decision.evidence_basis
 
         if not isinstance(basis, str):
             basis = ""
@@ -333,7 +338,7 @@ Do not omit any supplied requirement.
         basis = " ".join(basis.strip().split())
 
         decisions[skill_key] = {
-            "classification": decision.classification,
+            "classification": classification,
             "evidence_basis": (
                 basis or MISSING_EVIDENCE_BASIS
             ),

@@ -1,7 +1,11 @@
 from rest_framework import generics, permissions
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import JobApplication
 from .serializers import JobApplicationSerializer
+from .services.job_provider import IndianAPIJobProvider
+from .services.job_recommender import JobRecommender
 
 
 class JobApplicationListCreateView(
@@ -31,3 +35,285 @@ class JobApplicationDetailView(
         return JobApplication.objects.filter(
             user=self.request.user
         )
+    
+
+class JobSearchView(APIView):
+    """
+    Search real Indian job listings through IndianAPI.
+    """
+
+    permission_classes = [
+        permissions.IsAuthenticated
+    ]
+
+    def get(self, request):
+        title = request.query_params.get(
+            "title",
+            "",
+        ).strip()
+
+        location = request.query_params.get(
+            "location",
+            "",
+        ).strip()
+
+        company = request.query_params.get(
+            "company",
+            "",
+        ).strip()
+
+        experience = request.query_params.get(
+            "experience",
+            "",
+        ).strip()
+
+        job_type = request.query_params.get(
+            "job_type",
+            "",
+        ).strip()
+
+        limit_param = request.query_params.get(
+            "limit",
+            "10",
+        )
+
+        try:
+            limit = int(limit_param)
+        except (TypeError, ValueError):
+            return Response(
+                {
+                    "detail": (
+                        "limit must be a valid integer."
+                    )
+                },
+                status=400,
+            )
+
+        # Keep the external API request bounded.
+        limit = max(1, min(limit, 20))
+
+        if not any(
+            [
+                title,
+                location,
+                company,
+                experience,
+                job_type,
+            ]
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Provide at least one search "
+                        "parameter."
+                    )
+                },
+                status=400,
+            )
+
+        try:
+            provider = IndianAPIJobProvider()
+
+            jobs = provider.search_jobs(
+                title=title or None,
+                location=location or None,
+                company=company or None,
+                experience=experience or None,
+                job_type=job_type or None,
+                limit=limit,
+            )
+
+            return Response(
+                {
+                    "count": len(jobs),
+                    "jobs": jobs,
+                },
+                status=200,
+            )
+
+        except RuntimeError as exc:
+            return Response(
+                {
+                    "detail": str(exc)
+                },
+                status=502,
+            )
+
+        except Exception as exc:
+            return Response(
+                {
+                    "detail": (
+                        "Unable to search jobs."
+                    )
+                },
+                status=500,
+            )
+        
+
+class RecommendedJobsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        resume_id = request.query_params.get("resume_id", "").strip()
+        resume_type = request.query_params.get(
+            "resume_type",
+            "uploaded",
+        ).strip()
+
+        location = request.query_params.get(
+            "location",
+            "",
+        ).strip()
+
+        limit_param = request.query_params.get(
+            "limit",
+            "10",
+        )
+
+        if not resume_id:
+            return Response(
+                {"detail": "resume_id is required."},
+                status=400,
+            )
+
+        try:
+            resume_id = int(resume_id)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "resume_id must be a valid integer."},
+                status=400,
+            )
+
+        try:
+            limit = int(limit_param)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "limit must be a valid integer."},
+                status=400,
+            )
+
+        limit = max(1, min(limit, 20))
+
+        try:
+            if resume_type == "uploaded":
+                from resumes.models import Resume
+
+                resume = Resume.objects.get(
+                    id=resume_id,
+                    user=request.user,
+                )
+
+                resume_intelligence = resume.resume_intelligence
+
+            elif resume_type == "generated":
+                from resume_builder.models import GeneratedResume
+
+                generated_resume = GeneratedResume.objects.get(
+                    id=resume_id,
+                    user=request.user,
+                )
+
+                resume_intelligence = {
+                    "skills": [],
+                    "programming_languages": [],
+                    "frameworks": [],
+                    "tools_and_technologies": [],
+                    "ai_ml_technologies": [],
+                }
+
+                content = generated_resume.content or {}
+
+                skills = content.get("skills", {})
+
+                if isinstance(skills, dict):
+                    for values in skills.values():
+                        if isinstance(values, list):
+                            resume_intelligence["skills"].extend(
+                                value
+                                for value in values
+                                if isinstance(value, str)
+                            )
+
+                projects = content.get("projects", [])
+
+                if isinstance(projects, list):
+                    for project in projects:
+                        if not isinstance(project, dict):
+                            continue
+
+                        technologies = project.get(
+                            "technologies",
+                            [],
+                        )
+
+                        if isinstance(technologies, list):
+                            resume_intelligence[
+                                "skills"
+                            ].extend(
+                                value
+                                for value in technologies
+                                if isinstance(value, str)
+                            )
+
+            else:
+                return Response(
+                    {
+                        "detail": (
+                            "resume_type must be "
+                            "'uploaded' or 'generated'."
+                        )
+                    },
+                    status=400,
+                )
+
+        except Resume.DoesNotExist:
+            return Response(
+                {"detail": "Resume not found."},
+                status=404,
+            )
+
+        except GeneratedResume.DoesNotExist:
+            return Response(
+                {"detail": "Generated resume not found."},
+                status=404,
+            )
+
+        except AttributeError:
+            return Response(
+                {
+                    "detail": (
+                        "Resume intelligence is not "
+                        "available for this resume."
+                    )
+                },
+                status=400,
+            )
+
+        try:
+            recommender = JobRecommender()
+
+            jobs = recommender.recommend_jobs(
+                resume_intelligence=resume_intelligence,
+                location=location or None,
+                limit=limit,
+            )
+
+            return Response(
+                {
+                    "count": len(jobs),
+                    "jobs": jobs,
+                },
+                status=200,
+            )
+
+        except RuntimeError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=502,
+            )
+
+        except Exception:
+            return Response(
+                {"detail": "Unable to recommend jobs."},
+                status=500,
+            )

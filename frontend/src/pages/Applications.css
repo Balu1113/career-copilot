@@ -338,3 +338,41 @@
     width: 100%;
   }
 }
+
+.application-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.edit-application-btn,
+.delete-application-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.edit-application-btn {
+  color: #667085;
+}
+
+.edit-application-btn:hover {
+  background: #f2f4f7;
+  color: #344054;
+}
+
+.delete-application-btn {
+  color: #667085;
+}
+
+.delete-application-btn:hover {
+  background: #fef3f2;
+  color: #d92d20;
+}

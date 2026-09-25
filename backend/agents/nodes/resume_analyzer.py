@@ -390,7 +390,7 @@ Return only explicitly supported matches.
         schema=ResumeAnalysis,
     )
 
-    result_data = result.model_dump()
+    result_data = result
 
     # ==============================================================
     # DETERMINISTIC MATCHING VALIDATION

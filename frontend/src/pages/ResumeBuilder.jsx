@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   FileText,
   Sparkles,
@@ -41,6 +42,57 @@ const emptyResumeContent = {
   education: [],
   certifications: [],
   publications: [],
+};
+
+const buildResumeOptions = (
+  uploadedResumes = [],
+  generatedResumes = []
+) => [
+  ...uploadedResumes.map((resume) => ({
+    ...resume,
+    type: "uploaded",
+    value: `uploaded:${resume.id}`,
+    label: resume.title || `Resume #${resume.id}`,
+  })),
+  ...generatedResumes
+    .filter(
+      (resume) =>
+        resume.status === "completed" &&
+        resume.content &&
+        typeof resume.content === "object" &&
+        !Array.isArray(resume.content) &&
+        Object.keys(resume.content).length > 0
+    )
+    .map((resume) => ({
+      ...resume,
+      type: "generated",
+      value: `generated:${resume.id}`,
+      label:
+        resume.title || `Generated Resume #${resume.id}`,
+    })),
+];
+
+const fetchResumeOptions = async () => {
+  const [uploadedResponse, generatedResponse] =
+    await Promise.all([
+      api.get("/resumes/"),
+      api.get("/resume-builder/resumes/"),
+    ]);
+
+  const uploadedData =
+    uploadedResponse.data.results ||
+    uploadedResponse.data ||
+    [];
+
+  const generatedData =
+    generatedResponse.data.results ||
+    generatedResponse.data ||
+    [];
+
+  return buildResumeOptions(
+    uploadedData,
+    generatedData
+  );
 };
 
 const steps = [
@@ -151,6 +203,14 @@ function TextAreaField({
 }
 
 function ResumeBuilder() {
+  const location = useLocation();
+
+  const tailorMode = location.state?.mode === "modifier";
+  const incomingResumeId = location.state?.resumeId || "";
+  const incomingResumeType = location.state?.resumeType || "";
+  const incomingJobDescription =
+    location.state?.jobDescription || "";
+
   const [sourceType, setSourceType] =
     useState("existing_resume");
 
@@ -192,39 +252,97 @@ function ResumeBuilder() {
   const [showEditor, setShowEditor] = useState(false);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    let isActive = true;
 
-  const loadData = async () => {
-    try {
-      const [resumeResponse, templateResponse, profileResponse] =
-        await Promise.all([
-          api.get("/resumes/"),
-          api.get("/resume-builder/templates/"),
-          api.get("/resume-builder/profile/"),
-        ]);
+    Promise.all([
+      fetchResumeOptions(),
+      api.get("/resume-builder/templates/"),
+      api.get("/resume-builder/profile/"),
+    ])
+      .then(
+        ([resumeOptions, templateResponse, profileResponse]) => {
+          if (!isActive) {
+            return;
+          }
 
-      const resumeData =
-        resumeResponse.data.results ||
-        resumeResponse.data ||
-        [];
+          const templateData =
+            templateResponse.data.results ||
+            templateResponse.data ||
+            [];
 
-      const templateData =
-        templateResponse.data.results ||
-        templateResponse.data ||
-        [];
+          setResumes(resumeOptions);
+          setTemplates(templateData);
+          setProfile(profileResponse.data);
 
-      setResumes(resumeData);
-      setTemplates(templateData);
-      setProfile(profileResponse.data);
-    } catch (err) {
-      console.error(err);
+          // Prefill the builder when it is opened from Career Analysis.
+          if (tailorMode) {
+            setSourceType("existing_resume");
 
-      setError(
-        "Unable to load resumes and templates."
-      );
-    }
-  };
+            if (incomingResumeId) {
+              const resumeIdString = String(incomingResumeId);
+
+              // Career Analysis can provide the resume type. Prefer that
+              // exact match so uploaded/generated resume IDs cannot clash.
+              let matchingResume = null;
+
+              if (incomingResumeType) {
+                matchingResume = resumeOptions.find(
+                  (resume) =>
+                    resume.type === incomingResumeType &&
+                    String(resume.id) === resumeIdString
+                );
+              }
+
+              // Fall back to the exact builder option value or ID.
+              if (!matchingResume) {
+                matchingResume = resumeOptions.find(
+                  (resume) =>
+                    String(resume.value) === resumeIdString ||
+                    String(resume.id) === resumeIdString
+                );
+              }
+
+              if (matchingResume) {
+                setSelectedResumeId(matchingResume.value);
+              } else if (resumeIdString.includes(":")) {
+                // Also support callers that already pass uploaded:ID or
+                // generated:ID.
+                setSelectedResumeId(resumeIdString);
+              }
+            }
+
+            if (incomingJobDescription) {
+              setJobDescription(incomingJobDescription);
+            }
+
+            // Use the first saved template automatically. The user can
+            // still change it before generating the tailored resume.
+            if (templateData.length > 0) {
+              setSelectedTemplateId(String(templateData[0].id));
+            }
+          }
+        }
+      )
+      .catch((err) => {
+        if (!isActive) {
+          return;
+        }
+
+        console.error(err);
+        setError(
+          "Unable to load resumes and templates."
+        );
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [
+    tailorMode,
+    incomingResumeId,
+    incomingResumeType,
+    incomingJobDescription,
+  ]);
 
   const handleSourceChange = (type) => {
     setSourceType(type);
@@ -408,8 +526,12 @@ function ResumeBuilder() {
       };
 
       if (sourceType === "existing_resume") {
-        payload.resume_id =
-          Number(selectedResumeId);
+        const [resumeType, resumeId] =
+          selectedResumeId.split(":");
+
+        payload.resume_type =
+          resumeType || "uploaded";
+        payload.resume_id = Number(resumeId);
       }
 
       const response = await api.post(
@@ -551,9 +673,10 @@ function ResumeBuilder() {
 
       // Reload resumes to show the new entry in "My Resumes"
       try {
-        const resumeResponse = await api.get("/resumes/");
-        const resumeData = resumeResponse.data.results || resumeResponse.data || [];
-        setResumes(resumeData);
+        const resumeOptions =
+          await fetchResumeOptions();
+
+        setResumes(resumeOptions);
       } catch (err) {
         console.warn("Failed to reload resumes:", err);
       }
@@ -2362,16 +2485,48 @@ function ResumeBuilder() {
                           Select a resume
                         </option>
 
-                        {resumes.map(
-                          (resume) => (
-                            <option
-                              key={resume.id}
-                              value={resume.id}
-                            >
-                              {resume.title ||
-                                `Resume #${resume.id}`}
-                            </option>
-                          )
+                        {resumes.some(
+                          (resume) =>
+                            resume.type === "uploaded"
+                        ) && (
+                          <optgroup label="Uploaded Resumes">
+                            {resumes
+                              .filter(
+                                (resume) =>
+                                  resume.type ===
+                                  "uploaded"
+                              )
+                              .map((resume) => (
+                                <option
+                                  key={resume.value}
+                                  value={resume.value}
+                                >
+                                  {resume.label}
+                                </option>
+                              ))}
+                          </optgroup>
+                        )}
+
+                        {resumes.some(
+                          (resume) =>
+                            resume.type === "generated"
+                        ) && (
+                          <optgroup label="Generated Resumes">
+                            {resumes
+                              .filter(
+                                (resume) =>
+                                  resume.type ===
+                                  "generated"
+                              )
+                              .map((resume) => (
+                                <option
+                                  key={resume.value}
+                                  value={resume.value}
+                                >
+                                  {resume.label}
+                                </option>
+                              ))}
+                          </optgroup>
                         )}
                       </select>
                     </div>

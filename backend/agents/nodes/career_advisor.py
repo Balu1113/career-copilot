@@ -8,6 +8,177 @@ from agents.services.skill_normalizer import (
 from agents.services.skill_matching import canonicalize
 
 
+def calculate_overall_match_score(
+    job_requirements,
+    skill_gap_analysis,
+):
+    if not isinstance(job_requirements, dict):
+        job_requirements = {}
+
+    if not isinstance(skill_gap_analysis, dict):
+        skill_gap_analysis = {}
+
+    requirements = {}
+    registry = job_requirements.get(
+        "requirement_registry",
+        [],
+    )
+
+    if isinstance(registry, list):
+        for item in registry:
+            if not isinstance(item, dict):
+                continue
+
+            display_name = item.get("display_name") or item.get(
+                "skill"
+            )
+
+            if not isinstance(display_name, str):
+                continue
+
+            canonical = canonicalize(
+                item.get("canonical_group") or display_name
+            )
+
+            if not canonical:
+                continue
+
+            sources = item.get("sources")
+            source = item.get("source")
+
+            if isinstance(sources, list) and "required" in sources:
+                source = "required"
+            elif (
+                isinstance(sources, list)
+                and "preferred" in sources
+            ):
+                source = "preferred"
+            else:
+                source = (
+                    "preferred"
+                    if source == "preferred"
+                    else "required"
+                )
+
+            if requirements.get(canonical) != "required":
+                requirements[canonical] = source
+
+    if not requirements:
+        for field, source in (
+            ("required_skills", "required"),
+            ("preferred_skills", "preferred"),
+        ):
+            skills = job_requirements.get(field, [])
+
+            if not isinstance(skills, list):
+                continue
+
+            for skill in skills:
+                canonical = canonicalize(skill)
+
+                if not canonical:
+                    continue
+
+                if requirements.get(canonical) != "required":
+                    requirements[canonical] = source
+
+    def collect_classifications(field):
+        classifications = set()
+        items = skill_gap_analysis.get(field, [])
+
+        if not isinstance(items, list):
+            return classifications
+
+        for item in items:
+            if isinstance(item, str):
+                skill = item
+            elif isinstance(item, dict):
+                skill = item.get("skill") or item.get(
+                    "display_name"
+                )
+            else:
+                continue
+
+            canonical = canonicalize(skill)
+
+            if canonical:
+                classifications.add(canonical)
+
+        return classifications
+
+    missing_skills = collect_classifications("missing_skills")
+    partial_skills = collect_classifications("partial_skills")
+    counts = {
+        "demonstrated": 0,
+        "partial": 0,
+        "missing": 0,
+        "required": 0,
+        "preferred": 0,
+    }
+    weighted_score = 0.0
+    weighted_total = 0.0
+
+    for canonical, source in requirements.items():
+        counts[source] += 1
+        weight = 2.0 if source == "required" else 1.0
+        weighted_total += weight
+
+        if canonical in missing_skills:
+            classification = "missing"
+        elif canonical in partial_skills:
+            classification = "partial"
+        else:
+            classification = "demonstrated"
+
+        counts[classification] += 1
+
+        if classification == "demonstrated":
+            weighted_score += weight
+        elif classification == "partial":
+            weighted_score += weight * 0.5
+
+    total = len(requirements)
+
+    if not total:
+        return {
+            "overall_score": None,
+            "score_label": "Not enough data",
+            "score_summary": (
+                "No job requirements were available to calculate "
+                "a match score."
+            ),
+            "score_breakdown": counts,
+        }
+
+    score = int(
+        round(
+            weighted_score / weighted_total * 100
+        )
+    )
+
+    if score >= 85:
+        label = "Excellent match"
+    elif score >= 70:
+        label = "Strong match"
+    elif score >= 50:
+        label = "Moderate match"
+    elif score >= 30:
+        label = "Developing match"
+    else:
+        label = "Early-stage match"
+
+    return {
+        "overall_score": score,
+        "score_label": label,
+        "score_summary": (
+            f"{counts['demonstrated']} of {total} job skills are "
+            f"explicitly demonstrated, {counts['partial']} have "
+            f"partial evidence, and {counts['missing']} are missing."
+        ),
+        "score_breakdown": counts,
+    }
+
+
 def _normalize(value):
     if not isinstance(value, str):
         return ""
@@ -987,7 +1158,7 @@ Do not invent job requirements.
         max_retries=2,
     )
 
-    result_data = result.model_dump()
+    result_data = result
 
     if not _resume_contains_architecture_evidence(resume_intelligence):
         result_data = _sanitize_architecture_claims(result_data)
@@ -1035,6 +1206,13 @@ Do not invent job requirements.
             skill_gap_analysis,
             job_requirements,
             resume_analysis,
+        )
+    )
+
+    result_data.update(
+        calculate_overall_match_score(
+            job_requirements=job_requirements,
+            skill_gap_analysis=skill_gap_analysis,
         )
     )
 

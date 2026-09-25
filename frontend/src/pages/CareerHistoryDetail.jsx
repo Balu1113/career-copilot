@@ -633,12 +633,90 @@ function InterviewQuestionSection({
   );
 }
 
+function OverallScoreCard({ data }) {
+  if (typeof data?.overall_score !== "number") {
+    return null;
+  }
+
+  const score = Math.min(
+    Math.max(data.overall_score, 0),
+    100
+  );
+  const breakdown = data.score_breakdown || {};
+
+  return (
+    <div className="overall-score-card">
+      <div className="overall-score-top">
+        <div className="overall-score-value">
+          {score}
+          <span>%</span>
+        </div>
+
+        <div className="overall-score-copy">
+          <span className="result-key">
+            Overall Match Score
+          </span>
+
+          <strong>
+            {data.score_label}
+          </strong>
+
+          <p>
+            {data.score_summary}
+          </p>
+        </div>
+      </div>
+
+      <div
+        className="overall-score-track"
+        role="progressbar"
+        aria-label="Overall match score"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow={score}
+      >
+        <span style={{ width: `${score}%` }} />
+      </div>
+
+      <div className="result-tags overall-score-breakdown">
+        <span className="result-tag success">
+          {breakdown.demonstrated || 0} demonstrated
+        </span>
+
+        <span className="result-tag warning">
+          {breakdown.partial || 0} partial
+        </span>
+
+        <span className="result-tag danger">
+          {breakdown.missing || 0} missing
+        </span>
+
+        <span className="result-tag">
+          {breakdown.required || 0} required
+        </span>
+
+        <span className="result-tag">
+          {breakdown.preferred || 0} preferred
+        </span>
+      </div>
+
+      <p className="overall-score-method">
+        Required skills carry twice the weight of preferred skills;
+        partial evidence receives half credit.
+      </p>
+    </div>
+  );
+}
+
+
 function CareerRecommendationsCard({ data }) {
   return (
     <div className="career-result-card">
       <h3>
         Career Recommendations
       </h3>
+
+      <OverallScoreCard data={data} />
 
       <ResultSection
         title="Recommended Topics"

@@ -1373,7 +1373,7 @@ Return ONLY valid JSON.
         max_retries=2,
     )
 
-    result_data = result.model_dump()
+    result_data = result
 
     # ==================================================
     # DETERMINISTIC VALIDATION

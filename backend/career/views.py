@@ -8,6 +8,9 @@ from rest_framework.views import APIView
 
 from resumes.models import Resume, ResumeIntelligence
 from resumes.serializers import ResumeIntelligenceSerializer
+from resumes.services.resume_intelligence import (
+    generate_resume_intelligence,
+)
 
 from resume_builder.models import GeneratedResume
 from resume_builder.services.resume_text import (
@@ -169,11 +172,19 @@ class CareerAnalysisStreamView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            resume_intelligence = (
-                generated_resume_to_intelligence(
-                    generated.content
+            try:
+                resume_intelligence = (
+                    generate_resume_intelligence(
+                        resume_context
+                    )
                 )
-            )
+            except Exception:
+                resume_intelligence = (
+                    generated_resume_to_intelligence(
+                        generated.content
+                    )
+                )
+
             resume = generated.source_resume
             resume_title = generated.title
 

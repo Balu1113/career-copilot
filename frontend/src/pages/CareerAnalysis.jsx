@@ -1,8 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Brain,
   CheckCircle2,
@@ -61,15 +58,27 @@ const stages = [
 ];
 
 function CareerAnalysis() {
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const selectedJob = location.state
+    ? {
+        title: location.state.jobTitle || "",
+        company: location.state.company || "",
+        location: location.state.location || "",
+        jobType: location.state.jobType || "",
+        experience: location.state.experience || "",
+        jobUrl: location.state.jobUrl || "",
+        postedDate: location.state.postedDate || "",
+        source: location.state.source || "",
+      }
+    : null;
+
   const [resumes, setResumes] = useState([]);
-  const [resumeId, setResumeId] = useState(
-    location.state?.resumeId || ""
-  );
+  const [resumeId, setResumeId] = useState(location.state?.resumeId || "");
 
   const [jobDescription, setJobDescription] = useState(
-    location.state?.jobDescription || ""
+    location.state?.jobDescription || "",
   );
 
   const [result, setResult] = useState(null);
@@ -83,26 +92,22 @@ function CareerAnalysis() {
   useEffect(() => {
     const loadResumes = async () => {
       try {
-        const [uploadedResponse, generatedResponse] =
-          await Promise.all([
-            api.get("/resumes/"),
-            api.get("/resume-builder/resumes/"),
-          ]);
+        const [uploadedResponse, generatedResponse] = await Promise.all([
+          api.get("/resumes/"),
+          api.get("/resume-builder/resumes/"),
+        ]);
 
-        const uploaded = uploadedResponse.data.map(
-          (resume) => ({
-            ...resume,
-            type: "uploaded",
-            value: `uploaded:${resume.id}`,
-            label: resume.title,
-          })
-        );
+        const uploaded = uploadedResponse.data.map((resume) => ({
+          ...resume,
+          type: "uploaded",
+          value: `uploaded:${resume.id}`,
+          label: resume.title,
+        }));
 
         const generated = generatedResponse.data
           .filter(
             (resume) =>
-              resume.content &&
-              Object.keys(resume.content).length > 0
+              resume.content && Object.keys(resume.content).length > 0,
           )
           .map((resume) => ({
             ...resume,
@@ -121,18 +126,18 @@ function CareerAnalysis() {
           setResumeId(
             String(incomingId).includes(":")
               ? String(incomingId)
-              : `uploaded:${incomingId}`
+              : `uploaded:${incomingId}`,
           );
         } else if (combined.length > 0) {
           setResumeId(combined[0].value);
         }
-      } catch (err) {
+      } catch {
         setError("Unable to load resumes.");
       }
     };
 
     loadResumes();
-  }, []);
+  }, [location.state?.resumeId]);
 
   const runAnalysis = async (event) => {
     event.preventDefault();
@@ -143,9 +148,7 @@ function CareerAnalysis() {
     }
 
     if (jobDescription.trim().length < 50) {
-      setError(
-        "Please enter a job description with at least 50 characters."
-      );
+      setError("Please enter a job description with at least 50 characters.");
       return;
     }
 
@@ -159,8 +162,7 @@ function CareerAnalysis() {
 
       const token = localStorage.getItem("access_token");
 
-      const [resumeType, selectedResumeId] =
-        resumeId.split(":");
+      const [resumeType, selectedResumeId] = resumeId.split(":");
 
       const response = await fetch(
         "http://127.0.0.1:8000/api/career/analyze-stream/",
@@ -172,27 +174,22 @@ function CareerAnalysis() {
           },
           body: JSON.stringify({
             resume_id: Number(selectedResumeId),
-            resume_type:
-              resumeType || "uploaded",
+            resume_type: resumeType || "uploaded",
             job_description: jobDescription,
           }),
-        }
+        },
       );
 
       if (!response.ok) {
         const data = await response.json();
 
         throw new Error(
-          data.error ||
-            data.detail ||
-            "Unable to run career analysis."
+          data.error || data.detail || "Unable to run career analysis.",
         );
       }
 
       if (!response.body) {
-        throw new Error(
-          "Streaming is not supported by this browser."
-        );
+        throw new Error("Streaming is not supported by this browser.");
       }
 
       const reader = response.body.getReader();
@@ -224,15 +221,13 @@ function CareerAnalysis() {
             continue;
           }
 
-          const data = JSON.parse(
-            line.replace("data:", "").trim()
-          );
+          const data = JSON.parse(line.replace("data:", "").trim());
 
           if (data.type === "node_started") {
             setCurrentNode(data.node);
 
             setCompletedNodes((previous) =>
-              previous.filter((node) => node !== data.node)
+              previous.filter((node) => node !== data.node),
             );
           }
 
@@ -250,48 +245,42 @@ function CareerAnalysis() {
             if (data.node === "resume_intelligence") {
               setResult((previous) => ({
                 ...(previous || {}),
-                resume_intelligence:
-                  data.data?.resume_intelligence || {},
+                resume_intelligence: data.data?.resume_intelligence || {},
               }));
             }
 
             if (data.node === "job_analyzer") {
               setResult((previous) => ({
                 ...(previous || {}),
-                job_requirements:
-                  data.data?.job_requirements || {},
+                job_requirements: data.data?.job_requirements || {},
               }));
             }
 
             if (data.node === "resume_analyzer") {
               setResult((previous) => ({
                 ...(previous || {}),
-                resume_analysis:
-                  data.data?.resume_analysis || {},
+                resume_analysis: data.data?.resume_analysis || {},
               }));
             }
 
             if (data.node === "skill_gap") {
               setResult((previous) => ({
                 ...(previous || {}),
-                skill_gap_analysis:
-                  data.data?.skill_gap_analysis || {},
+                skill_gap_analysis: data.data?.skill_gap_analysis || {},
               }));
             }
 
             if (data.node === "career_advisor") {
               setResult((previous) => ({
                 ...(previous || {}),
-                career_recommendation:
-                  data.data?.career_recommendation || {},
+                career_recommendation: data.data?.career_recommendation || {},
               }));
             }
 
             if (data.node === "interview_prep") {
               setResult((previous) => ({
                 ...(previous || {}),
-                interview_preparation:
-                  data.data?.interview_preparation || {},
+                interview_preparation: data.data?.interview_preparation || {},
               }));
             }
           }
@@ -301,23 +290,15 @@ function CareerAnalysis() {
             setGenerating(false);
           }
 
-          if (
-            data.type === "error" ||
-            data.type === "workflow_error"
-          ) {
+          if (data.type === "error" || data.type === "workflow_error") {
             setCurrentNode(data.node || "");
 
-            throw new Error(
-              data.message || "Career analysis failed."
-            );
+            throw new Error(data.message || "Career analysis failed.");
           }
         }
       }
     } catch (err) {
-      setError(
-        err.message ||
-          "Unable to run career analysis."
-      );
+      setError(err.message || "Unable to run career analysis.");
     } finally {
       setGenerating(false);
     }
@@ -336,27 +317,95 @@ function CareerAnalysis() {
             </div>
 
             <p>
-              Analyze your resume against a target role using
-              a multi-step AI workflow.
+              Analyze your resume against a target role using a multi-step AI
+              workflow.
             </p>
           </div>
         </div>
 
-        {error && (
-          <div className="career-analysis-error">
-            {error}
-          </div>
-        )}
+        {error && <div className="career-analysis-error">{error}</div>}
 
         <section className="career-input-card">
           <div className="career-input-heading">
             <h2>Analyze Job Fit</h2>
 
             <p>
-              Your resume is analyzed against the job description
-              using a multi-agent LangGraph workflow.
+              Your resume is analyzed against the job description using a
+              multi-agent LangGraph workflow.
             </p>
           </div>
+
+          {selectedJob?.title && (
+            <div className="selected-job-card">
+              <div className="selected-job-card-top">
+                <div>
+                  <span className="selected-job-label">SELECTED JOB</span>
+
+                  <h3>{selectedJob.title}</h3>
+
+                  {selectedJob.company && (
+                    <p className="selected-job-company">
+                      {selectedJob.company}
+                    </p>
+                  )}
+                </div>
+
+                <div className="selected-job-actions">
+                  {selectedJob.jobUrl && (
+                    <a
+                      href={selectedJob.jobUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="selected-job-link"
+                    >
+                      View Original Job ↗
+                    </a>
+                  )}
+
+                  <button
+                    type="button"
+                    className="tailor-resume-btn"
+                    onClick={() => {
+                      const [selectedResumeType] = String(resumeId).split(":");
+
+                      navigate("/resume-builder", {
+                        state: {
+                          mode: "modifier",
+                          resumeId,
+                          resumeType: selectedResumeType || "uploaded",
+                          jobDescription,
+                          jobTitle: selectedJob.title,
+                          company: selectedJob.company,
+                          location: selectedJob.location,
+                          jobUrl: selectedJob.jobUrl,
+                        },
+                      });
+                    }}
+                  >
+                    Tailor Resume
+                  </button>
+                </div>
+              </div>
+
+              <div className="selected-job-meta">
+                {selectedJob.location && <span>{selectedJob.location}</span>}
+
+                {selectedJob.jobType && <span>{selectedJob.jobType}</span>}
+
+                {selectedJob.experience && (
+                  <span>{selectedJob.experience}</span>
+                )}
+
+                {selectedJob.source && (
+                  <span>Source: {selectedJob.source}</span>
+                )}
+
+                {selectedJob.postedDate && (
+                  <span>Posted: {selectedJob.postedDate}</span>
+                )}
+              </div>
+            </div>
+          )}
 
           <form onSubmit={runAnalysis}>
             <div className="career-form-group">
@@ -364,52 +413,30 @@ function CareerAnalysis() {
 
               <select
                 value={resumeId}
-                onChange={(event) =>
-                  setResumeId(event.target.value)
-                }
+                onChange={(event) => setResumeId(event.target.value)}
               >
                 {resumes.length === 0 ? (
-                  <option value="">
-                    No resumes available
-                  </option>
+                  <option value="">No resumes available</option>
                 ) : (
                   <>
-                    {resumes.some(
-                      (resume) =>
-                        resume.type === "uploaded"
-                    ) && (
+                    {resumes.some((resume) => resume.type === "uploaded") && (
                       <optgroup label="Uploaded Resumes">
                         {resumes
-                          .filter(
-                            (resume) =>
-                              resume.type === "uploaded"
-                          )
+                          .filter((resume) => resume.type === "uploaded")
                           .map((resume) => (
-                            <option
-                              key={resume.value}
-                              value={resume.value}
-                            >
+                            <option key={resume.value} value={resume.value}>
                               {resume.label}
                             </option>
                           ))}
                       </optgroup>
                     )}
 
-                    {resumes.some(
-                      (resume) =>
-                        resume.type === "generated"
-                    ) && (
+                    {resumes.some((resume) => resume.type === "generated") && (
                       <optgroup label="Generated Resumes">
                         {resumes
-                          .filter(
-                            (resume) =>
-                              resume.type === "generated"
-                          )
+                          .filter((resume) => resume.type === "generated")
                           .map((resume) => (
-                            <option
-                              key={resume.value}
-                              value={resume.value}
-                            >
+                            <option key={resume.value} value={resume.value}>
                               {resume.label}
                             </option>
                           ))}
@@ -425,9 +452,7 @@ function CareerAnalysis() {
 
               <textarea
                 value={jobDescription}
-                onChange={(event) =>
-                  setJobDescription(event.target.value)
-                }
+                onChange={(event) => setJobDescription(event.target.value)}
                 rows="9"
                 placeholder="Paste the target job description..."
               />
@@ -436,16 +461,11 @@ function CareerAnalysis() {
             <button
               className="run-analysis-btn"
               type="submit"
-              disabled={
-                generating || resumes.length === 0
-              }
+              disabled={generating || resumes.length === 0}
             >
               {generating ? (
                 <>
-                  <Loader2
-                    size={18}
-                    className="spinning"
-                  />
+                  <Loader2 size={18} className="spinning" />
                   Running AI Agents...
                 </>
               ) : (
@@ -458,10 +478,7 @@ function CareerAnalysis() {
           </form>
         </section>
 
-        {(generating ||
-          result ||
-          completedNodes.length > 0 ||
-          error) && (
+        {(generating || result || completedNodes.length > 0 || error) && (
           <section className="agent-pipeline">
             <div className="pipeline-header">
               <div>
@@ -471,17 +488,14 @@ function CareerAnalysis() {
                   {generating
                     ? "LangGraph is processing your career analysis."
                     : error
-                    ? "The agent workflow encountered an error."
-                    : "LangGraph completed the career analysis workflow."}
+                      ? "The agent workflow encountered an error."
+                      : "LangGraph completed the career analysis workflow."}
                 </p>
               </div>
 
               {generating && (
                 <span className="pipeline-running">
-                  <Loader2
-                    size={15}
-                    className="spinning"
-                  />
+                  <Loader2 size={15} className="spinning" />
                   Running
                 </span>
               )}
@@ -491,43 +505,32 @@ function CareerAnalysis() {
               {stages.map((stage, index) => {
                 const Icon = stage.icon;
 
-                const completed =
-                  completedNodes.includes(stage.node);
+                const completed = completedNodes.includes(stage.node);
 
                 const running =
-                  generating &&
-                  currentNode === stage.node &&
-                  !completed;
+                  generating && currentNode === stage.node && !completed;
 
                 const failed =
-                  !!error &&
-                  currentNode === stage.node &&
-                  !completed;
+                  !!error && currentNode === stage.node && !completed;
 
                 return (
-                  <div
-                    className="pipeline-stage-wrapper"
-                    key={stage.key}
-                  >
+                  <div className="pipeline-stage-wrapper" key={stage.key}>
                     <div
                       className={`pipeline-stage ${
                         completed
                           ? "completed"
                           : running
-                          ? "running"
-                          : failed
-                          ? "failed"
-                          : ""
+                            ? "running"
+                            : failed
+                              ? "failed"
+                              : ""
                       }`}
                     >
                       <div className="pipeline-icon">
                         {completed ? (
                           <CheckCircle2 size={21} />
                         ) : running ? (
-                          <Loader2
-                            size={21}
-                            className="spinning"
-                          />
+                          <Loader2 size={21} className="spinning" />
                         ) : failed ? (
                           "!"
                         ) : (
@@ -542,10 +545,10 @@ function CareerAnalysis() {
                           {completed
                             ? "Completed"
                             : running
-                            ? "Processing..."
-                            : failed
-                            ? "Failed"
-                            : stage.description}
+                              ? "Processing..."
+                              : failed
+                                ? "Failed"
+                                : stage.description}
                         </p>
                       </div>
                     </div>
@@ -570,9 +573,7 @@ function CareerAnalysis() {
               <div>
                 <h2>Career Analysis</h2>
 
-                <p>
-                  Results generated by the agentic workflow.
-                </p>
+                <p>Results generated by the agentic workflow.</p>
               </div>
 
               <CheckCircle2 size={27} />
@@ -678,9 +679,7 @@ function ResumeIntelligenceCard({ data }) {
 
       {data.professional_summary && (
         <div className="career-result-item">
-          <span className="result-key">
-            Professional Summary
-          </span>
+          <span className="result-key">Professional Summary</span>
 
           <div className="analysis-explanation">
             {data.professional_summary}
@@ -688,11 +687,7 @@ function ResumeIntelligenceCard({ data }) {
         </div>
       )}
 
-      <ResultSection
-        title="Skills"
-        items={data.skills}
-        type="tags"
-      />
+      <ResultSection title="Skills" items={data.skills} type="tags" />
 
       <ResultSection
         title="Programming Languages"
@@ -700,11 +695,7 @@ function ResumeIntelligenceCard({ data }) {
         type="tags"
       />
 
-      <ResultSection
-        title="Frameworks"
-        items={data.frameworks}
-        type="tags"
-      />
+      <ResultSection title="Frameworks" items={data.frameworks} type="tags" />
 
       <ResultSection
         title="Tools & Technologies"
@@ -720,18 +711,11 @@ function ResumeIntelligenceCard({ data }) {
 
       <ResumeProjects projects={data.projects} />
 
-      <ResultSection
-        title="Experience"
-        items={data.experience}
-      />
+      <ResultSection title="Experience" items={data.experience} />
 
-      <ResumeEducation
-        education={data.education}
-      />
+      <ResumeEducation education={data.education} />
 
-      <ResumeCertifications
-        certifications={data.certifications}
-      />
+      <ResumeCertifications certifications={data.certifications} />
     </div>
   );
 }
@@ -743,32 +727,21 @@ function ResumeProjects({ projects = [] }) {
 
   return (
     <div className="career-result-item">
-      <span className="result-key">
-        Projects
-      </span>
+      <span className="result-key">Projects</span>
 
       <div className="project-list">
         {projects.map((project, index) => (
-          <div
-            className="project-item"
-            key={index}
-          >
-            <div className="project-number">
-              {index + 1}
-            </div>
+          <div className="project-item" key={index}>
+            <div className="project-number">{index + 1}</div>
 
             <div className="project-content">
               <h4>{project.name}</h4>
 
               {project.description?.length > 0 && (
                 <ul>
-                  {project.description.map(
-                    (description, descriptionIndex) => (
-                      <li key={descriptionIndex}>
-                        {description}
-                      </li>
-                    )
-                  )}
+                  {project.description.map((description, descriptionIndex) => (
+                    <li key={descriptionIndex}>{description}</li>
+                  ))}
                 </ul>
               )}
 
@@ -777,16 +750,11 @@ function ResumeProjects({ projects = [] }) {
                   <strong>Technologies:</strong>
 
                   <div className="result-tags">
-                    {project.technologies.map(
-                      (technology, technologyIndex) => (
-                        <span
-                          className="result-tag"
-                          key={technologyIndex}
-                        >
-                          {technology}
-                        </span>
-                      )
-                    )}
+                    {project.technologies.map((technology, technologyIndex) => (
+                      <span className="result-tag" key={technologyIndex}>
+                        {technology}
+                      </span>
+                    ))}
                   </div>
                 </div>
               )}
@@ -805,24 +773,17 @@ function ResumeEducation({ education = [] }) {
 
   return (
     <div className="career-result-item">
-      <span className="result-key">
-        Education
-      </span>
+      <span className="result-key">Education</span>
 
       <div className="structured-result-list">
         {education.map((item, index) => (
-          <div
-            className="structured-result-item"
-            key={index}
-          >
+          <div className="structured-result-item" key={index}>
             <h4>{item.degree}</h4>
 
             <p>{item.institution}</p>
 
             {item.dates && (
-              <span className="structured-result-meta">
-                {item.dates}
-              </span>
+              <span className="structured-result-meta">{item.dates}</span>
             )}
           </div>
         ))}
@@ -831,30 +792,21 @@ function ResumeEducation({ education = [] }) {
   );
 }
 
-function ResumeCertifications({
-  certifications = [],
-}) {
+function ResumeCertifications({ certifications = [] }) {
   if (!certifications || certifications.length === 0) {
     return null;
   }
 
   return (
     <div className="career-result-item">
-      <span className="result-key">
-        Certifications
-      </span>
+      <span className="result-key">Certifications</span>
 
       <div className="structured-result-list">
         {certifications.map((item, index) => (
-          <div
-            className="structured-result-item"
-            key={index}
-          >
+          <div className="structured-result-item" key={index}>
             <h4>{item.name}</h4>
 
-            {item.issuer && (
-              <p>{item.issuer}</p>
-            )}
+            {item.issuer && <p>{item.issuer}</p>}
           </div>
         ))}
       </div>
@@ -883,10 +835,7 @@ function JobRequirementsCard({ data }) {
         type="tags"
       />
 
-      <ResultSection
-        title="Responsibilities"
-        items={data.responsibilities}
-      />
+      <ResultSection title="Responsibilities" items={data.responsibilities} />
 
       <ResultSection
         title="Experience Requirements"
@@ -946,43 +895,30 @@ function SkillGapCard({ data }) {
     <div className="career-result-card">
       <h3>Skill Gap Analysis</h3>
 
-      <SkillGapList
-        title="Missing Skills"
-        items={data.missing_skills}
-      />
+      <SkillGapList title="Missing Skills" items={data.missing_skills} />
 
-      <SkillGapList
-        title="Partial Skills"
-        items={data.partial_skills}
-      />
+      <SkillGapList title="Partial Skills" items={data.partial_skills} />
 
       {data.priority_gaps?.length > 0 && (
         <div className="career-result-item">
-          <span className="result-key">
-            Priority Gaps
-          </span>
+          <span className="result-key">Priority Gaps</span>
 
           <div className="priority-gap-list">
             {data.priority_gaps.map((gap, index) => (
-              <div
-                className="priority-gap-card"
-                key={index}
-              >
+              <div className="priority-gap-card" key={index}>
                 <div className="priority-gap-header">
                   <strong>{gap.skill}</strong>
 
                   <span
                     className={`priority-badge ${String(
-                      gap.priority
+                      gap.priority,
                     ).toLowerCase()}`}
                   >
                     {gap.priority}
                   </span>
                 </div>
 
-                {gap.reason && (
-                  <p>{gap.reason}</p>
-                )}
+                {gap.reason && <p>{gap.reason}</p>}
               </div>
             ))}
           </div>
@@ -991,13 +927,9 @@ function SkillGapCard({ data }) {
 
       {data.explanation && (
         <div className="career-result-item">
-          <span className="result-key">
-            Analysis
-          </span>
+          <span className="result-key">Analysis</span>
 
-          <div className="analysis-explanation">
-            {data.explanation}
-          </div>
+          <div className="analysis-explanation">{data.explanation}</div>
         </div>
       )}
     </div>
@@ -1011,31 +943,24 @@ function SkillGapList({ title, items = [] }) {
 
   return (
     <div className="career-result-item">
-      <span className="result-key">
-        {title}
-      </span>
+      <span className="result-key">{title}</span>
 
       <div className="priority-gap-list">
         {items.map((item, index) => (
-          <div
-            className="priority-gap-card"
-            key={index}
-          >
+          <div className="priority-gap-card" key={index}>
             <div className="priority-gap-header">
               <strong>{item.skill}</strong>
 
               <span
                 className={`priority-badge ${String(
-                  item.priority
+                  item.priority,
                 ).toLowerCase()}`}
               >
                 {item.priority}
               </span>
             </div>
 
-            {item.reason && (
-              <p>{item.reason}</p>
-            )}
+            {item.reason && <p>{item.reason}</p>}
           </div>
         ))}
       </div>
@@ -1047,32 +972,88 @@ function SkillGapList({ title, items = [] }) {
    CAREER RECOMMENDATIONS
 ===================================================== */
 
+function OverallScoreCard({ data }) {
+  if (typeof data?.overall_score !== "number") {
+    return null;
+  }
+
+  const score = Math.min(Math.max(data.overall_score, 0), 100);
+  const breakdown = data.score_breakdown || {};
+
+  return (
+    <div className="overall-score-card">
+      <div className="overall-score-top">
+        <div className="overall-score-value">
+          {score}
+          <span>%</span>
+        </div>
+
+        <div className="overall-score-copy">
+          <span className="result-key">Overall Match Score</span>
+
+          <strong>{data.score_label}</strong>
+
+          <p>{data.score_summary}</p>
+        </div>
+      </div>
+
+      <div
+        className="overall-score-track"
+        role="progressbar"
+        aria-label="Overall match score"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow={score}
+      >
+        <span style={{ width: `${score}%` }} />
+      </div>
+
+      <div className="result-tags overall-score-breakdown">
+        <span className="result-tag success">
+          {breakdown.demonstrated || 0} demonstrated
+        </span>
+
+        <span className="result-tag warning">
+          {breakdown.partial || 0} partial
+        </span>
+
+        <span className="result-tag danger">
+          {breakdown.missing || 0} missing
+        </span>
+
+        <span className="result-tag">{breakdown.required || 0} required</span>
+
+        <span className="result-tag">{breakdown.preferred || 0} preferred</span>
+      </div>
+
+      <p className="overall-score-method">
+        Required skills carry twice the weight of preferred skills; partial
+        evidence receives half credit.
+      </p>
+    </div>
+  );
+}
+
 function CareerRecommendationsCard({ data }) {
   return (
     <div className="career-result-card">
       <h3>Career Recommendations</h3>
 
+      <OverallScoreCard data={data} />
+
       {data.match_summary && (
         <div className="career-result-item">
           <span className="result-key">Match Summary</span>
 
-          <div className="analysis-explanation">
-            {data.match_summary}
-          </div>
+          <div className="analysis-explanation">{data.match_summary}</div>
         </div>
       )}
 
-      <RecommendationTopics
-        items={data.recommended_topics}
-      />
+      <RecommendationTopics items={data.recommended_topics} />
 
-      <RecommendedProjects
-        projects={data.recommended_projects}
-      />
+      <RecommendedProjects projects={data.recommended_projects} />
 
-      <NextSteps
-        items={data.next_steps}
-      />
+      <NextSteps items={data.next_steps} />
     </div>
   );
 }
@@ -1084,49 +1065,35 @@ function RecommendationTopics({ items = [] }) {
 
   return (
     <div className="career-result-item">
-      <span className="result-key">
-        Recommended Topics
-      </span>
+      <span className="result-key">Recommended Topics</span>
 
       <div className="priority-gap-list">
         {items.map((item, index) => (
-          <div
-            className="priority-gap-card"
-            key={index}
-          >
+          <div className="priority-gap-card" key={index}>
             <div className="priority-gap-header">
               <strong>{item.topic}</strong>
 
               <span
                 className={`priority-badge ${String(
-                  item.priority
+                  item.priority,
                 ).toLowerCase()}`}
               >
                 {item.priority}
               </span>
             </div>
 
-            {item.reason && (
-              <p>{item.reason}</p>
-            )}
+            {item.reason && <p>{item.reason}</p>}
 
             {item.source_gaps?.length > 0 && (
               <div className="source-gaps">
-                <span className="source-gaps-label">
-                  Source gaps
-                </span>
+                <span className="source-gaps-label">Source gaps</span>
 
                 <div className="result-tags">
-                  {item.source_gaps.map(
-                    (gap, gapIndex) => (
-                      <span
-                        className="result-tag warning"
-                        key={gapIndex}
-                      >
-                        {gap}
-                      </span>
-                    )
-                  )}
+                  {item.source_gaps.map((gap, gapIndex) => (
+                    <span className="result-tag warning" key={gapIndex}>
+                      {gap}
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
@@ -1137,7 +1104,6 @@ function RecommendationTopics({ items = [] }) {
   );
 }
 
-
 function RecommendedProjects({ projects = [] }) {
   if (!projects || projects.length === 0) {
     return null;
@@ -1145,42 +1111,28 @@ function RecommendedProjects({ projects = [] }) {
 
   return (
     <div className="career-result-item">
-      <span className="result-key">
-        Recommended Projects
-      </span>
+      <span className="result-key">Recommended Projects</span>
 
       <div className="project-list">
         {projects.map((project, index) => (
-          <div
-            className="project-item"
-            key={index}
-          >
-            <div className="project-number">
-              {index + 1}
-            </div>
+          <div className="project-item" key={index}>
+            <div className="project-number">{index + 1}</div>
 
             <div className="project-content">
               <h4>{project.name}</h4>
 
-              {project.description && (
-                <p>{project.description}</p>
-              )}
+              {project.description && <p>{project.description}</p>}
 
               {project.technologies?.length > 0 && (
                 <div className="project-technologies">
                   <strong>Technologies:</strong>
 
                   <div className="result-tags">
-                    {project.technologies.map(
-                      (technology, technologyIndex) => (
-                        <span
-                          className="result-tag"
-                          key={technologyIndex}
-                        >
-                          {technology}
-                        </span>
-                      )
-                    )}
+                    {project.technologies.map((technology, technologyIndex) => (
+                      <span className="result-tag" key={technologyIndex}>
+                        {technology}
+                      </span>
+                    ))}
                   </div>
                 </div>
               )}
@@ -1191,7 +1143,6 @@ function RecommendedProjects({ projects = [] }) {
     </div>
   );
 }
-
 
 function InterviewPreparationCard({ data, analysis, analysisId }) {
   const navigate = useNavigate();
@@ -1206,8 +1157,7 @@ function InterviewPreparationCard({ data, analysis, analysisId }) {
     data.gap_based_questions?.length > 0 ||
     data.behavioral_questions?.length > 0;
 
-  const hasTopics =
-    data.preparation_topics?.length > 0;
+  const hasTopics = data.preparation_topics?.length > 0;
 
   if (!hasQuestions && !hasTopics) {
     return null;
@@ -1253,16 +1203,11 @@ function InterviewPreparationCard({ data, analysis, analysisId }) {
       </button>
       {hasTopics && (
         <div className="career-result-item">
-          <span className="result-key">
-            Preparation Topics
-          </span>
+          <span className="result-key">Preparation Topics</span>
 
           <div className="result-tags">
             {data.preparation_topics.map((topic, index) => (
-              <span
-                className="result-tag"
-                key={index}
-              >
+              <span className="result-tag" key={index}>
                 {topic}
               </span>
             ))}
@@ -1273,40 +1218,27 @@ function InterviewPreparationCard({ data, analysis, analysisId }) {
   );
 }
 
-
-function InterviewQuestionSection({
-  title,
-  questions = [],
-}) {
+function InterviewQuestionSection({ title, questions = [] }) {
   if (!questions || questions.length === 0) {
     return null;
   }
 
   return (
     <div className="career-result-item">
-      <span className="result-key">
-        {title}
-      </span>
+      <span className="result-key">{title}</span>
 
       <div className="interview-question-list">
         {questions.map((item, index) => (
-          <div
-            className="interview-question-card"
-            key={index}
-          >
+          <div className="interview-question-card" key={index}>
             <div className="interview-question-header">
-              <span className="recommendation-number">
-                {index + 1}
-              </span>
+              <span className="recommendation-number">{index + 1}</span>
 
               <div className="interview-question-meta">
-                <span className="result-tag">
-                  {item.category}
-                </span>
+                <span className="result-tag">{item.category}</span>
 
                 <span
                   className={`priority-badge ${String(
-                    item.difficulty
+                    item.difficulty,
                   ).toLowerCase()}`}
                 >
                   {item.difficulty}
@@ -1330,8 +1262,6 @@ function InterviewQuestionSection({
   );
 }
 
-
-
 function NextSteps({ items = [] }) {
   if (!items || items.length === 0) {
     return null;
@@ -1339,16 +1269,11 @@ function NextSteps({ items = [] }) {
 
   return (
     <div className="career-result-item">
-      <span className="result-key">
-        Next Steps
-      </span>
+      <span className="result-key">Next Steps</span>
 
       <div className="priority-gap-list">
         {items.map((item, index) => (
-          <div
-            className="priority-gap-card"
-            key={index}
-          >
+          <div className="priority-gap-card" key={index}>
             <div className="priority-gap-header">
               <strong>
                 {index + 1}. {item.step}
@@ -1356,7 +1281,7 @@ function NextSteps({ items = [] }) {
 
               <span
                 className={`priority-badge ${String(
-                  item.priority
+                  item.priority,
                 ).toLowerCase()}`}
               >
                 {item.priority}
@@ -1373,35 +1298,30 @@ function NextSteps({ items = [] }) {
    GENERIC RESULT SECTION
 ===================================================== */
 
-function ResultSection({
-  title,
-  items = [],
-  type = "list",
-}) {
+function ResultSection({ title, items = [], type = "list" }) {
   const formatTagItem = (item) => {
     if (typeof item === "object" && item !== null) {
-      return item.name || item.skill || item.topic || item.title || JSON.stringify(item);
+      return (
+        item.name ||
+        item.skill ||
+        item.topic ||
+        item.title ||
+        JSON.stringify(item)
+      );
     }
     return item;
   };
 
   return (
     <div className="career-result-item">
-      <span className="result-key">
-        {title}
-      </span>
+      <span className="result-key">{title}</span>
 
       {!items || items.length === 0 ? (
-        <p className="result-empty">
-          No information available.
-        </p>
+        <p className="result-empty">No information available.</p>
       ) : type === "tags" ? (
         <div className="result-tags">
           {items.map((item, index) => (
-            <span
-              className="result-tag"
-              key={index}
-            >
+            <span className="result-tag" key={index}>
               {formatTagItem(item)}
             </span>
           ))}
@@ -1409,10 +1329,7 @@ function ResultSection({
       ) : type === "success-tags" ? (
         <div className="result-tags">
           {items.map((item, index) => (
-            <span
-              className="result-tag success"
-              key={index}
-            >
+            <span className="result-tag success" key={index}>
               ✓ {formatTagItem(item)}
             </span>
           ))}
@@ -1420,10 +1337,7 @@ function ResultSection({
       ) : type === "danger-tags" ? (
         <div className="result-tags">
           {items.map((item, index) => (
-            <span
-              className="result-tag danger"
-              key={index}
-            >
+            <span className="result-tag danger" key={index}>
               {formatTagItem(item)}
             </span>
           ))}
@@ -1431,10 +1345,7 @@ function ResultSection({
       ) : type === "warning-tags" ? (
         <div className="result-tags">
           {items.map((item, index) => (
-            <span
-              className="result-tag warning"
-              key={index}
-            >
+            <span className="result-tag warning" key={index}>
               {formatTagItem(item)}
             </span>
           ))}
@@ -1442,29 +1353,49 @@ function ResultSection({
       ) : type === "project-list" ? (
         <div className="project-list">
           {items.map((item, index) => (
-            <div
-              className="project-item"
-              key={index}
-            >
-              <div className="project-number">
-                {index + 1}
-              </div>
+            <div className="project-item" key={index}>
+              <div className="project-number">{index + 1}</div>
 
               <div style={{ flex: 1 }}>
                 {typeof item === "object" && item !== null ? (
                   <div>
                     <strong>{item.name || item.title || "Project"}</strong>
-                    {item.description && <p style={{ marginTop: '0.25rem', marginBottom: '0.25rem' }}>{item.description}</p>}
-                    {item.purpose && <p style={{ fontSize: '0.9rem', opacity: 0.8, marginTop: '0.25rem' }}><em>Purpose: {item.purpose}</em></p>}
-                    {Array.isArray(item.technologies) && item.technologies.length > 0 && (
-                      <div className="result-tags" style={{ marginTop: '0.5rem' }}>
-                        {item.technologies.map((tech, idx) => (
-                          <span key={idx} className="result-tag">
-                            {typeof tech === "object" ? (tech.name || JSON.stringify(tech)) : tech}
-                          </span>
-                        ))}
-                      </div>
+                    {item.description && (
+                      <p
+                        style={{
+                          marginTop: "0.25rem",
+                          marginBottom: "0.25rem",
+                        }}
+                      >
+                        {item.description}
+                      </p>
                     )}
+                    {item.purpose && (
+                      <p
+                        style={{
+                          fontSize: "0.9rem",
+                          opacity: 0.8,
+                          marginTop: "0.25rem",
+                        }}
+                      >
+                        <em>Purpose: {item.purpose}</em>
+                      </p>
+                    )}
+                    {Array.isArray(item.technologies) &&
+                      item.technologies.length > 0 && (
+                        <div
+                          className="result-tags"
+                          style={{ marginTop: "0.5rem" }}
+                        >
+                          {item.technologies.map((tech, idx) => (
+                            <span key={idx} className="result-tag">
+                              {typeof tech === "object"
+                                ? tech.name || JSON.stringify(tech)
+                                : tech}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                   </div>
                 ) : (
                   <p>{item}</p>
@@ -1476,13 +1407,8 @@ function ResultSection({
       ) : type === "recommendation-list" ? (
         <div className="recommendation-list">
           {items.map((item, index) => (
-            <div
-              className="recommendation-item"
-              key={index}
-            >
-              <span className="recommendation-icon">
-                →
-              </span>
+            <div className="recommendation-item" key={index}>
+              <span className="recommendation-icon">→</span>
 
               <div style={{ flex: 1 }}>
                 {typeof item === "object" && item !== null ? (
@@ -1491,16 +1417,36 @@ function ResultSection({
                     {item.question && <strong>{item.question}</strong>}
                     {item.name && <strong>{item.name}</strong>}
                     {item.priority && (
-                      <span className={`result-tag ${String(item.priority).toLowerCase() === 'high' ? 'danger' : 'warning'}`} style={{ marginLeft: '0.5rem' }}>
+                      <span
+                        className={`result-tag ${String(item.priority).toLowerCase() === "high" ? "danger" : "warning"}`}
+                        style={{ marginLeft: "0.5rem" }}
+                      >
                         {item.priority}
                       </span>
                     )}
-                    {item.reason && <p style={{ marginTop: '0.25rem' }}>{item.reason}</p>}
-                    {item.why && <p style={{ marginTop: '0.25rem', fontSize: '0.9rem', opacity: 0.8 }}><em>Why: {item.why}</em></p>}
-                    {item.description && <p style={{ marginTop: '0.25rem' }}>{item.description}</p>}
-                    {!item.topic && !item.question && !item.name && !item.reason && !item.why && !item.description && (
-                      <p>{formatObject(item)}</p>
+                    {item.reason && (
+                      <p style={{ marginTop: "0.25rem" }}>{item.reason}</p>
                     )}
+                    {item.why && (
+                      <p
+                        style={{
+                          marginTop: "0.25rem",
+                          fontSize: "0.9rem",
+                          opacity: 0.8,
+                        }}
+                      >
+                        <em>Why: {item.why}</em>
+                      </p>
+                    )}
+                    {item.description && (
+                      <p style={{ marginTop: "0.25rem" }}>{item.description}</p>
+                    )}
+                    {!item.topic &&
+                      !item.question &&
+                      !item.name &&
+                      !item.reason &&
+                      !item.why &&
+                      !item.description && <p>{formatObject(item)}</p>}
                   </div>
                 ) : (
                   <p>{item}</p>
@@ -1512,21 +1458,23 @@ function ResultSection({
       ) : type === "numbered-list" ? (
         <div className="recommendation-list">
           {items.map((item, index) => (
-            <div
-              className="recommendation-item"
-              key={index}
-            >
-              <span className="recommendation-number">
-                {index + 1}
-              </span>
+            <div className="recommendation-item" key={index}>
+              <span className="recommendation-number">{index + 1}</span>
 
               <div style={{ flex: 1 }}>
                 {typeof item === "object" && item !== null ? (
                   <div>
-                    {item.step && <p><strong>{item.step}</strong></p>}
+                    {item.step && (
+                      <p>
+                        <strong>{item.step}</strong>
+                      </p>
+                    )}
                     {item.action && <p>{item.action}</p>}
                     {item.priority && (
-                      <span className="result-tag warning" style={{ marginTop: '0.25rem' }}>
+                      <span
+                        className="result-tag warning"
+                        style={{ marginTop: "0.25rem" }}
+                      >
                         {item.priority}
                       </span>
                     )}
@@ -1557,11 +1505,9 @@ function ResultSection({
 function formatObject(object) {
   return Object.entries(object)
     .map(([key, value]) => {
-      const formattedValue =
-        Array.isArray(value)
-          ? value.join(", ")
-          : typeof value === "object" &&
-            value !== null
+      const formattedValue = Array.isArray(value)
+        ? value.join(", ")
+        : typeof value === "object" && value !== null
           ? JSON.stringify(value)
           : value;
 
@@ -1573,9 +1519,7 @@ function formatObject(object) {
 function formatKey(key) {
   return key
     .replace(/_/g, " ")
-    .replace(/\b\w/g, (character) =>
-      character.toUpperCase()
-    );
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 export default CareerAnalysis;

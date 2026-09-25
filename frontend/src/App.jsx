@@ -16,20 +16,16 @@ import ResumeIntelligence from "./pages/ResumeIntelligence";
 import InterviewPractice from "./pages/InterviewPractice";
 import ResumeBuilder from "./pages/ResumeBuilder";
 import ResumeEdit from "./pages/ResumeEdit";
+import Jobs from "./pages/Jobs";
+import RecommendedJobs from "./pages/RecommendedJobs";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route
-          path="/"
-          element={<Navigate to="/dashboard" replace />}
-        />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-        <Route
-          path="/login"
-          element={<Login />}
-        />
+        <Route path="/login" element={<Login />} />
 
         <Route
           path="/dashboard"
@@ -165,9 +161,32 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/jobs"
+          element={
+            <ProtectedRoute>
+              <div className="dashboard-layout">
+                <Sidebar />
+                <main className="dashboard-main">
+                  <Jobs />
+                </main>
+              </div>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/recommended-jobs"
+          element={
+            <ProtectedRoute>
+              <RecommendedJobs />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );
 }
 
-export default App; 
+export default App;

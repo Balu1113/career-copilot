@@ -253,6 +253,11 @@ class ResumeContentGenerationView(APIView):
             "resume_id"
         )
 
+        resume_type = request.data.get(
+            "resume_type",
+            "uploaded",
+        )
+
         template_id = request.data.get(
             "template_id"
         )
@@ -322,6 +327,7 @@ class ResumeContentGenerationView(APIView):
             )
 
         resume = None
+        generated_source = None
 
         try:
             # =================================================
@@ -329,6 +335,20 @@ class ResumeContentGenerationView(APIView):
             # =================================================
 
             if source_type == "existing_resume":
+
+                if resume_type not in {
+                    "uploaded",
+                    "generated",
+                }:
+                    return Response(
+                        {
+                            "detail": (
+                                "resume_type must be "
+                                "'uploaded' or 'generated'."
+                            )
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
                 if not resume_id:
                     return Response(
@@ -341,44 +361,89 @@ class ResumeContentGenerationView(APIView):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
-                try:
-                    resume = Resume.objects.get(
-                        id=resume_id,
-                        user=request.user,
-                    )
-                except Resume.DoesNotExist:
-                    return Response(
-                        {
-                            "detail": "Resume not found."
-                        },
-                        status=status.HTTP_404_NOT_FOUND,
+                if resume_type == "uploaded":
+
+                    try:
+                        resume = Resume.objects.get(
+                            id=resume_id,
+                            user=request.user,
+                        )
+                    except Resume.DoesNotExist:
+                        return Response(
+                            {
+                                "detail": "Resume not found."
+                            },
+                            status=status.HTTP_404_NOT_FOUND,
+                        )
+
+                    if not resume.extracted_text:
+                        return Response(
+                            {
+                                "detail": (
+                                    "Selected resume does "
+                                    "not contain extracted text."
+                                )
+                            },
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+
+                    # ---------------------------------------------
+                    # Parse existing resume
+                    # ---------------------------------------------
+
+                    parsed_resume = parse_resume_text(
+                        resume.extracted_text
                     )
 
-                if not resume.extracted_text:
-                    return Response(
-                        {
-                            "detail": (
-                                "Selected resume does "
-                                "not contain extracted text."
+                    if hasattr(
+                        parsed_resume,
+                        "model_dump",
+                    ):
+                        parsed_resume = (
+                            parsed_resume.model_dump()
+                        )
+
+                else:
+
+                    try:
+                        generated_source = (
+                            GeneratedResume.objects.get(
+                                id=resume_id,
+                                user=request.user,
                             )
-                        },
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
+                        )
+                    except GeneratedResume.DoesNotExist:
+                        return Response(
+                            {
+                                "detail": (
+                                    "Generated resume not found."
+                                )
+                            },
+                            status=status.HTTP_404_NOT_FOUND,
+                        )
 
-                # ---------------------------------------------
-                # Parse existing resume
-                # ---------------------------------------------
+                    if (
+                        generated_source.status
+                        != GeneratedResume.STATUS_COMPLETED
+                        or not isinstance(
+                            generated_source.content,
+                            dict,
+                        )
+                        or not generated_source.content
+                    ):
+                        return Response(
+                            {
+                                "detail": (
+                                    "Selected generated resume "
+                                    "does not contain completed resume "
+                                    "content."
+                                )
+                            },
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
 
-                parsed_resume = parse_resume_text(
-                    resume.extracted_text
-                )
-
-                if hasattr(
-                    parsed_resume,
-                    "model_dump",
-                ):
                     parsed_resume = (
-                        parsed_resume.model_dump()
+                        generated_source.content
                     )
 
                 # ---------------------------------------------
@@ -502,18 +567,22 @@ class ResumeContentGenerationView(APIView):
             # CREATE GENERATED RESUME
             # =================================================
 
+            source_title = None
+
+            if resume:
+                source_title = resume.title
+            elif generated_source:
+                source_title = generated_source.title
+
             generated_resume = (
                 GeneratedResume.objects.create(
                     user=request.user,
                     template=template,
                     source_resume=resume,
                     title=(
-                        "Generated Resume"
-                        if resume is None
-                        else (
-                            f"Generated Resume - "
-                            f"{resume.title}"
-                        )
+                        f"Generated Resume - {source_title}"
+                        if source_title
+                        else "Generated Resume"
                     ),
                     mode=GeneratedResume.MODE_BUILDER,
                     job_description=job_description,
@@ -588,11 +657,21 @@ class ResumeContentGenerationView(APIView):
                 {
                     "id": generated_resume.id,
                     "source_type": source_type,
+                    "resume_type": (
+                        resume_type
+                        if source_type == "existing_resume"
+                        else None
+                    ),
                     "resume_id": (
                         resume.id
                         if resume
-                        else None
+                        else (
+                            generated_source.id
+                            if generated_source
+                            else None
+                        )
                     ),
+                    "title": generated_resume.title,
                     "template_id": template.id,
                     "content": final_content,
                     "output_file": (

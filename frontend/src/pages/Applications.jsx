@@ -1,12 +1,9 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
   Briefcase,
   Calendar,
+  Edit3,
   ExternalLink,
   Plus,
   Trash2,
@@ -38,6 +35,7 @@ function Applications() {
   const [applications, setApplications] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [showForm, setShowForm] = useState(false);
+  const [editingApplication, setEditingApplication] = useState(null);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -52,8 +50,7 @@ function Applications() {
       setApplications(response.data);
     } catch (err) {
       setError(
-        err.response?.data?.detail ||
-          "Unable to load your applications."
+        err.response?.data?.detail || "Unable to load your applications.",
       );
     } finally {
       setLoading(false);
@@ -65,68 +62,53 @@ function Applications() {
   }, []);
 
   useEffect(() => {
-  if (
-    location.state?.fromCareerAnalysis &&
-    location.state?.analysis
-  ) {
-    const analysis = location.state.analysis;
+    if (location.state?.fromCareerAnalysis && location.state?.analysis) {
+      const analysis = location.state.analysis;
 
-    const recommendation =
-      analysis.career_recommendation;
+      const recommendation = analysis.career_recommendation;
 
-    const skillGap =
-      analysis.skill_gap_analysis;
+      const skillGap = analysis.skill_gap_analysis;
 
-    const notes = [
-      "Career Analysis",
-      "",
-      recommendation?.match_summary
-        ? `Match Summary: ${recommendation.match_summary}`
-        : "",
-      "",
-      skillGap?.missing_skills?.length
-        ? `Missing Skills: ${skillGap.missing_skills
-            .map((item) =>
-              typeof item === "object"
-                ? item.skill
-                : item
-            )
-            .join(", ")}`
-        : "",
-      "",
-      recommendation?.next_steps?.length
-        ? `Next Steps:\n${recommendation.next_steps
-            .map((item, index) => {
-              const step =
-                typeof item === "object"
-                  ? item.step
-                  : item;
+      const notes = [
+        "Career Analysis",
+        "",
+        recommendation?.match_summary
+          ? `Match Summary: ${recommendation.match_summary}`
+          : "",
+        "",
+        skillGap?.missing_skills?.length
+          ? `Missing Skills: ${skillGap.missing_skills
+              .map((item) => (typeof item === "object" ? item.skill : item))
+              .join(", ")}`
+          : "",
+        "",
+        recommendation?.next_steps?.length
+          ? `Next Steps:\n${recommendation.next_steps
+              .map((item, index) => {
+                const step = typeof item === "object" ? item.step : item;
 
-              return `${index + 1}. ${step}`;
-            })
-            .join("\n")}`
-        : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
+                return `${index + 1}. ${step}`;
+              })
+              .join("\n")}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
 
-    setForm({
-      company: "",
-      job_title: "",
-      job_url: "",
-      status: "saved",
-      applied_date: "",
-      notes,
-    });
+      setForm({
+        company: "",
+        job_title: "",
+        job_url: "",
+        status: "saved",
+        applied_date: "",
+        notes,
+      });
 
-    setShowForm(true);
+      setShowForm(true);
 
-    window.history.replaceState(
-      {},
-      document.title
-    );
-  }
-}, [location.state]);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -144,24 +126,36 @@ function Applications() {
       setSaving(true);
       setError("");
 
-      const response = await api.post("/jobs/", {
+      const payload = {
         ...form,
         job_url: form.job_url || null,
         applied_date: form.applied_date || null,
-      });
+      };
 
-      setApplications((previous) => [
-        response.data,
-        ...previous,
-      ]);
+      if (editingApplication) {
+        const response = await api.patch(
+          `/jobs/${editingApplication.id}/`,
+          payload,
+        );
+
+        setApplications((previous) =>
+          previous.map((application) =>
+            application.id === editingApplication.id
+              ? response.data
+              : application,
+          ),
+        );
+      } else {
+        const response = await api.post("/jobs/", payload);
+
+        setApplications((previous) => [response.data, ...previous]);
+      }
 
       setForm(initialForm);
+      setEditingApplication(null);
       setShowForm(false);
     } catch (err) {
-      setError(
-        err.response?.data?.detail ||
-          "Unable to create the application."
-      );
+      setError(err.response?.data?.detail || "Unable to save the application.");
     } finally {
       setSaving(false);
     }
@@ -175,20 +169,31 @@ function Applications() {
 
       setApplications((previous) =>
         previous.map((application) =>
-          application.id === id
-            ? response.data
-            : application
-        )
+          application.id === id ? response.data : application,
+        ),
       );
     } catch (err) {
       setError("Unable to update application status.");
     }
   };
 
+  const handleEdit = (application) => {
+    setEditingApplication(application);
+
+    setForm({
+      company: application.company || "",
+      job_title: application.job_title || "",
+      job_url: application.job_url || "",
+      status: application.status || "saved",
+      applied_date: application.applied_date || "",
+      notes: application.notes || "",
+    });
+
+    setShowForm(true);
+  };
+
   const deleteApplication = async (id) => {
-    const confirmed = window.confirm(
-      "Delete this job application?"
-    );
+    const confirmed = window.confirm("Delete this job application?");
 
     if (!confirmed) {
       return;
@@ -198,9 +203,7 @@ function Applications() {
       await api.delete(`/jobs/${id}/`);
 
       setApplications((previous) =>
-        previous.filter(
-          (application) => application.id !== id
-        )
+        previous.filter((application) => application.id !== id),
       );
     } catch (err) {
       setError("Unable to delete the application.");
@@ -212,23 +215,16 @@ function Applications() {
       return applications;
     }
 
-    return applications.filter(
-      (application) => application.status === filter
-    );
+    return applications.filter((application) => application.status === filter);
   }, [applications, filter]);
 
   const stats = useMemo(() => {
     return {
       total: applications.length,
-      applied: applications.filter(
-        (item) => item.status === "applied"
-      ).length,
-      interview: applications.filter(
-        (item) => item.status === "interview"
-      ).length,
-      offers: applications.filter(
-        (item) => item.status === "offer"
-      ).length,
+      applied: applications.filter((item) => item.status === "applied").length,
+      interview: applications.filter((item) => item.status === "interview")
+        .length,
+      offers: applications.filter((item) => item.status === "offer").length,
     };
   }, [applications]);
 
@@ -240,9 +236,7 @@ function Applications() {
         <div className="applications-header">
           <div>
             <h1>Applications</h1>
-            <p>
-              Track your job applications and career progress.
-            </p>
+            <p>Track your job applications and career progress.</p>
           </div>
 
           <button
@@ -254,11 +248,7 @@ function Applications() {
           </button>
         </div>
 
-        {error && (
-          <div className="application-error">
-            {error}
-          </div>
-        )}
+        {error && <div className="application-error">{error}</div>}
 
         <div className="application-stats">
           <div className="application-stat-card">
@@ -313,17 +303,12 @@ function Applications() {
 
           <select
             value={filter}
-            onChange={(event) =>
-              setFilter(event.target.value)
-            }
+            onChange={(event) => setFilter(event.target.value)}
           >
             <option value="all">All Applications</option>
 
             {STATUS_OPTIONS.map((status) => (
-              <option
-                key={status.value}
-                value={status.value}
-              >
+              <option key={status.value} value={status.value}>
                 {status.label}
               </option>
             ))}
@@ -331,9 +316,7 @@ function Applications() {
         </div>
 
         {loading ? (
-          <div className="applications-loading">
-            Loading applications...
-          </div>
+          <div className="applications-loading">Loading applications...</div>
         ) : filteredApplications.length === 0 ? (
           <div className="applications-empty">
             <Briefcase size={42} />
@@ -341,8 +324,8 @@ function Applications() {
             <h3>No applications found</h3>
 
             <p>
-              Add your first job application to start
-              tracking your career journey.
+              Add your first job application to start tracking your career
+              journey.
             </p>
 
             <button
@@ -356,10 +339,7 @@ function Applications() {
         ) : (
           <div className="applications-list">
             {filteredApplications.map((application) => (
-              <div
-                className="application-card"
-                key={application.id}
-              >
+              <div className="application-card" key={application.id}>
                 <div className="application-card-top">
                   <div className="company-icon">
                     <Briefcase size={21} />
@@ -370,15 +350,23 @@ function Applications() {
                     <p>{application.company}</p>
                   </div>
 
-                  <button
-                    className="delete-application-btn"
-                    onClick={() =>
-                      deleteApplication(application.id)
-                    }
-                    title="Delete application"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                  <div className="application-card-actions">
+                    <button
+                      className="edit-application-btn"
+                      onClick={() => handleEdit(application)}
+                      title="Edit application"
+                    >
+                      <Edit3 size={17} />
+                    </button>
+
+                    <button
+                      className="delete-application-btn"
+                      onClick={() => deleteApplication(application.id)}
+                      title="Delete application"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="application-details">
@@ -405,27 +393,19 @@ function Applications() {
                   <select
                     value={application.status}
                     onChange={(event) =>
-                      updateStatus(
-                        application.id,
-                        event.target.value
-                      )
+                      updateStatus(application.id, event.target.value)
                     }
                     className={`status-select status-${application.status}`}
                   >
                     {STATUS_OPTIONS.map((status) => (
-                      <option
-                        key={status.value}
-                        value={status.value}
-                      >
+                      <option key={status.value} value={status.value}>
                         {status.label}
                       </option>
                     ))}
                   </select>
 
                   {application.notes && (
-                    <p className="application-notes">
-                      {application.notes}
-                    </p>
+                    <p className="application-notes">{application.notes}</p>
                   )}
                 </div>
               </div>
@@ -438,15 +418,26 @@ function Applications() {
             <div className="application-modal">
               <div className="modal-header">
                 <div>
-                  <h2>Add Application</h2>
+                  <h2>
+                    {editingApplication
+                      ? "Edit Application"
+                      : "Add Application"}
+                  </h2>
+
                   <p>
-                    Save a job opportunity to your tracker.
+                    {editingApplication
+                      ? "Update your application details."
+                      : "Save a job opportunity to your tracker."}
                   </p>
                 </div>
 
                 <button
                   className="modal-close-btn"
-                  onClick={() => setShowForm(false)}
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingApplication(null);
+                    setForm(initialForm);
+                  }}
                 >
                   <X size={20} />
                 </button>
@@ -499,10 +490,7 @@ function Applications() {
                       onChange={handleChange}
                     >
                       {STATUS_OPTIONS.map((status) => (
-                        <option
-                          key={status.value}
-                          value={status.value}
-                        >
+                        <option key={status.value} value={status.value}>
                           {status.label}
                         </option>
                       ))}
@@ -535,7 +523,11 @@ function Applications() {
                   <button
                     type="button"
                     className="cancel-btn"
-                    onClick={() => setShowForm(false)}
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditingApplication(null);
+                      setForm(initialForm);
+                    }}
                   >
                     Cancel
                   </button>
@@ -547,7 +539,9 @@ function Applications() {
                   >
                     {saving
                       ? "Saving..."
-                      : "Save Application"}
+                      : editingApplication
+                        ? "Save Changes"
+                        : "Save Application"}
                   </button>
                 </div>
               </form>
