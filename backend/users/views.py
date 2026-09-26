@@ -92,6 +92,33 @@ class RefreshView(APIView):
         )
 
 
+class LogoutView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        refresh_token = request.data.get("refresh")
+
+        if not refresh_token:
+            return Response(
+                {"error": "Refresh token is required."},
+                status=400,
+            )
+
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+        except TokenError:
+            return Response(
+                {"error": "Invalid or expired refresh token."},
+                status=400,
+            )
+
+        return Response(
+            {"message": "Logged out successfully."},
+            status=200,
+        )
+
+
 class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
