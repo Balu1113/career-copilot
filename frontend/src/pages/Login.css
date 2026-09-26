@@ -69,6 +69,57 @@
   color: #374151;
 }
 
+.password-input-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-shell input {
+  width: 100%;
+  box-sizing: border-box;
+
+  padding: 12px 72px 12px 14px;
+
+  border: 1px solid #d1d5db;
+
+  border-radius: 8px;
+
+  font-size: 15px;
+
+  color: #111827;
+
+  background: #ffffff;
+
+  outline: none;
+
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.password-input-shell input:focus {
+  border-color: #4f46e5;
+
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+.toggle-password-button {
+  position: absolute;
+  right: 10px;
+
+  border: none;
+  background: transparent;
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+
+.toggle-password-button:hover {
+  background: rgba(79, 70, 229, 0.08);
+}
+
 .form-group input {
   width: 100%;
   box-sizing: border-box;
@@ -98,6 +149,29 @@
 
 .form-group input::placeholder {
   color: #9ca3af;
+}
+
+.password-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: -6px;
+}
+
+.password-rule {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.password-rule.valid {
+  background: #dcfce7;
+  color: #166534;
 }
 
 .error-message {

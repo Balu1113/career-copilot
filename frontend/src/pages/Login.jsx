@@ -10,6 +10,7 @@ function Login() {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,6 +19,22 @@ function Login() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    const trimmedUsername = username.trim();
+
+    if (!trimmedUsername) {
+      const message = "Username is required.";
+      setError(message);
+      window.alert(message);
+      return;
+    }
+
+    if (!password) {
+      const message = "Password is required.";
+      setError(message);
+      window.alert(message);
+      return;
+    }
+
     setError("");
     setLoading(true);
 
@@ -25,7 +42,7 @@ function Login() {
       const response = await api.post(
         "/auth/login/",
         {
-          username,
+          username: trimmedUsername,
           password,
         }
       );
@@ -40,13 +57,17 @@ function Login() {
         response.data.refresh
       );
 
+      window.alert("Login successful!");
       navigate("/dashboard");
 
     } catch (error) {
-      setError(
+      const message =
         error.response?.data?.detail ||
-        "Login failed."
-      );
+        error.response?.data?.non_field_errors?.[0] ||
+        "Login failed.";
+
+      setError(message);
+      window.alert(message);
     } finally {
       setLoading(false);
     }
@@ -70,18 +91,30 @@ function Login() {
               onChange={(event) => setUsername(event.target.value)}
               required
               placeholder="Enter your username"
+              autoComplete="username"
             />
           </div>
 
           <div className="form-group">
             <label>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-              placeholder="Enter your password"
-            />
+            <div className="password-input-shell">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                placeholder="Enter your password"
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                className="toggle-password-button"
+                onClick={() => setShowPassword((current) => !current)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
           </div>
 
           {error && <p className="error-message">{error}</p>}
