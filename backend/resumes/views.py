@@ -25,8 +25,12 @@ class ResumeListCreateView(
         )
 
     def perform_create(self, serializer):
-        resume = serializer.save(
-            user=self.request.user
+        resume = serializer.save(user=self.request.user)
+
+        print(
+            f"[RESUME UPLOAD] Resume {resume.id} saved. "
+            f"Starting AI processing thread.",
+            flush=True,
         )
 
         profile, _ = UserProfile.objects.get_or_create(
@@ -35,16 +39,19 @@ class ResumeListCreateView(
 
         if profile.active_resume_id is None:
             profile.active_resume = resume
-            profile.save(
-                update_fields=["active_resume"]
-            )
+            profile.save(update_fields=["active_resume"])
 
-        # Start AI processing in the background
         threading.Thread(
             target=process_resume_ai,
             args=(resume.id,),
             daemon=True,
         ).start()
+
+        print(
+            f"[RESUME UPLOAD] AI processing thread started "
+            f"for resume {resume.id}.",
+            flush=True,
+        )
 
 
 class ResumeDetailView(
