@@ -264,3 +264,57 @@
 
   color: #64748b;
 }
+
+
+.processing-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin-top: 8px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.processing-pending {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.processing-active {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.processing-complete {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.processing-failed {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.processing-error {
+  margin-top: 6px;
+  color: #b91c1c;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}

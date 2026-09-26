@@ -17,33 +17,26 @@ import "./Resumes.css";
 function Resumes() {
   const navigate = useNavigate();
 
-  const [uploadedResumes, setUploadedResumes] =
-    useState([]);
+  const [uploadedResumes, setUploadedResumes] = useState([]);
+  const [generatedResumes, setGeneratedResumes] = useState([]);
 
-  const [generatedResumes, setGeneratedResumes] =
-    useState([]);
-
-  const [activeResumeId, setActiveResumeId] =
-    useState(null);
-
-  const [activeTab, setActiveTab] =
-    useState("uploaded");
+  const [activeResumeId, setActiveResumeId] = useState(null);
+  const [activeTab, setActiveTab] = useState("uploaded");
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [actingResumeId, setActingResumeId] =
-    useState(null);
+  const [actingResumeId, setActingResumeId] = useState(null);
 
-  const fetchResumes = async () => {
+  const fetchResumes = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
+
       setError("");
 
-      const [
-        uploadedResponse,
-        generatedResponse,
-      ] = await Promise.all([
+      const [uploadedResponse, generatedResponse] = await Promise.all([
         api.get("/resumes/"),
         api.get("/resume-builder/resumes/"),
       ]);
@@ -51,20 +44,22 @@ function Resumes() {
       setUploadedResumes(
         Array.isArray(uploadedResponse.data)
           ? uploadedResponse.data
-          : []
+          : [],
       );
 
       setGeneratedResumes(
         Array.isArray(generatedResponse.data)
           ? generatedResponse.data
-          : []
+          : [],
       );
     } catch (err) {
       console.error(err);
 
       setError("Unable to load resumes.");
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -80,7 +75,7 @@ function Resumes() {
       setError(
         err?.response?.data?.detail ||
           err?.response?.data?.error ||
-          "Unable to perform this action."
+          "Unable to perform this action.",
       );
     } finally {
       setActingResumeId(null);
@@ -97,7 +92,7 @@ function Resumes() {
 
   const deleteUploadedResume = async (resumeId) => {
     const confirmed = window.confirm(
-      "Delete this uploaded resume?"
+      "Delete this uploaded resume?",
     );
 
     if (!confirmed) return;
@@ -107,8 +102,8 @@ function Resumes() {
 
       setUploadedResumes((current) =>
         current.filter(
-          (resume) => resume.id !== resumeId
-        )
+          (resume) => resume.id !== resumeId,
+        ),
       );
 
       if (activeResumeId === resumeId) {
@@ -119,20 +114,20 @@ function Resumes() {
 
   const deleteGeneratedResume = async (resumeId) => {
     const confirmed = window.confirm(
-      "Delete this generated resume?"
+      "Delete this generated resume?",
     );
 
     if (!confirmed) return;
 
     await runAction(resumeId, async () => {
       await api.delete(
-        `/resume-builder/resumes/${resumeId}/`
+        `/resume-builder/resumes/${resumeId}/`,
       );
 
       setGeneratedResumes((current) =>
         current.filter(
-          (resume) => resume.id !== resumeId
-        )
+          (resume) => resume.id !== resumeId,
+        ),
       );
     });
   };
@@ -141,7 +136,9 @@ function Resumes() {
     await runAction(resume.id, async () => {
       const response = await api.get(
         `/resumes/${resume.id}/download/`,
-        { responseType: "blob" }
+        {
+          responseType: "blob",
+        },
       );
 
       const blob = new Blob([response.data]);
@@ -163,7 +160,9 @@ function Resumes() {
     await runAction(resume.id, async () => {
       const response = await api.get(
         `/resume-builder/resumes/${resume.id}/download/`,
-        { responseType: "blob" }
+        {
+          responseType: "blob",
+        },
       );
 
       const blob = new Blob([response.data]);
@@ -181,9 +180,61 @@ function Resumes() {
     });
   };
 
+  const getProcessingStatus = (resume) => {
+    const status = String(
+      resume.processing_status || "pending",
+    ).toLowerCase();
+
+    if (status === "completed") {
+      return {
+        label: "AI Processing Complete",
+        className: "processing-complete",
+      };
+    }
+
+    if (status === "processing") {
+      return {
+        label: "AI Processing...",
+        className: "processing-active",
+      };
+    }
+
+    if (status === "failed") {
+      return {
+        label: "AI Processing Failed",
+        className: "processing-failed",
+      };
+    }
+
+    return {
+      label: "Uploaded · AI Processing Pending",
+      className: "processing-pending",
+    };
+  };
+
+  // Initial load
   useEffect(() => {
     fetchResumes();
   }, []);
+
+  // Poll while resume AI processing is pending/active
+  useEffect(() => {
+    const hasProcessingResume = uploadedResumes.some(
+      (resume) =>
+        resume.processing_status === "pending" ||
+        resume.processing_status === "processing",
+    );
+
+    if (!hasProcessingResume) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      fetchResumes(false);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [uploadedResumes]);
 
   if (loading) {
     return (
@@ -202,6 +253,9 @@ function Resumes() {
   const renderUploadedCard = (resume) => {
     const isActive = activeResumeId === resume.id;
 
+    const processingStatus =
+      getProcessingStatus(resume);
+
     return (
       <div
         className={`resume-card ${
@@ -219,9 +273,41 @@ function Resumes() {
           <p>
             Uploaded{" "}
             {new Date(
-              resume.uploaded_at
+              resume.uploaded_at,
             ).toLocaleDateString()}
           </p>
+
+          <span
+            className={`processing-badge ${processingStatus.className}`}
+          >
+            {processingStatus.className ===
+              "processing-active" && (
+              <Loader2
+                size={14}
+                className="spin"
+              />
+            )}
+
+            {processingStatus.className ===
+              "processing-complete" && (
+              <CheckCircle2 size={14} />
+            )}
+
+            {processingStatus.className ===
+              "processing-failed" && (
+              <span>!</span>
+            )}
+
+            {processingStatus.label}
+          </span>
+
+          {processingStatus.className ===
+            "processing-failed" &&
+            resume.processing_error && (
+              <p className="processing-error">
+                {resume.processing_error}
+              </p>
+            )}
         </div>
 
         {isActive && (
@@ -234,11 +320,16 @@ function Resumes() {
         <div className="resume-actions">
           {!isActive && (
             <button
-              onClick={() => activateResume(resume.id)}
+              onClick={() =>
+                activateResume(resume.id)
+              }
               disabled={actionPending(resume.id)}
             >
               {actionPending(resume.id) ? (
-                <Loader2 size={15} />
+                <Loader2
+                  size={15}
+                  className="spin"
+                />
               ) : (
                 "Use this resume"
               )}
@@ -249,7 +340,7 @@ function Resumes() {
             className="edit-button"
             onClick={() =>
               navigate(
-                `/resumes/edit/uploaded/${resume.id}`
+                `/resumes/edit/uploaded/${resume.id}`,
               )
             }
           >
@@ -265,7 +356,10 @@ function Resumes() {
             disabled={actionPending(resume.id)}
           >
             {actionPending(resume.id) ? (
-              <Loader2 size={15} />
+              <Loader2
+                size={15}
+                className="spin"
+              />
             ) : (
               <Download size={15} />
             )}
@@ -288,11 +382,15 @@ function Resumes() {
   };
 
   const renderGeneratedCard = (resume) => {
-    const status =
-      String(resume.status || "draft").toLowerCase();
+    const status = String(
+      resume.status || "draft",
+    ).toLowerCase();
 
     return (
-      <div className="resume-card" key={resume.id}>
+      <div
+        className="resume-card"
+        key={resume.id}
+      >
         <div className="resume-icon generated">
           <Sparkles size={24} />
         </div>
@@ -303,7 +401,7 @@ function Resumes() {
           <p>
             Created{" "}
             {new Date(
-              resume.created_at
+              resume.created_at,
             ).toLocaleDateString()}
           </p>
 
@@ -319,7 +417,7 @@ function Resumes() {
             className="edit-button"
             onClick={() =>
               navigate(
-                `/resumes/edit/generated/${resume.id}`
+                `/resumes/edit/generated/${resume.id}`,
               )
             }
           >
@@ -335,7 +433,10 @@ function Resumes() {
             disabled={actionPending(resume.id)}
           >
             {actionPending(resume.id) ? (
-              <Loader2 size={15} />
+              <Loader2
+                size={15}
+                className="spin"
+              />
             ) : (
               <Download size={15} />
             )}
@@ -364,14 +465,16 @@ function Resumes() {
           <h1>My Resumes</h1>
 
           <p>
-               Manage, edit and download your uploaded
-               and generated resumes.
+            Manage, edit and download your uploaded
+            and generated resumes.
           </p>
         </div>
       </div>
 
       {error && (
-        <p className="error-message">{error}</p>
+        <p className="error-message">
+          {error}
+        </p>
       )}
 
       {!hasUploaded && !hasGenerated ? (
@@ -391,9 +494,13 @@ function Resumes() {
             <button
               type="button"
               className={`resume-tab ${
-                activeTab === "uploaded" ? "active" : ""
+                activeTab === "uploaded"
+                  ? "active"
+                  : ""
               }`}
-              onClick={() => setActiveTab("uploaded")}
+              onClick={() =>
+                setActiveTab("uploaded")
+              }
             >
               <FileText size={16} />
               Uploaded Resumes
@@ -405,12 +512,16 @@ function Resumes() {
             <button
               type="button"
               className={`resume-tab ${
-                activeTab === "generated" ? "active" : ""
+                activeTab === "generated"
+                  ? "active"
+                  : ""
               }`}
-              onClick={() => setActiveTab("generated")}
+              onClick={() =>
+                setActiveTab("generated")
+              }
             >
               <Sparkles size={16} />
-               Generated Resumes
+              Generated Resumes
               <span className="tab-count">
                 {generatedResumes.length}
               </span>
@@ -421,7 +532,7 @@ function Resumes() {
             (hasUploaded ? (
               <div className="resume-grid">
                 {uploadedResumes.map(
-                  renderUploadedCard
+                  renderUploadedCard,
                 )}
               </div>
             ) : (
@@ -441,7 +552,7 @@ function Resumes() {
             (hasGenerated ? (
               <div className="resume-grid">
                 {generatedResumes.map(
-                  renderGeneratedCard
+                  renderGeneratedCard,
                 )}
               </div>
             ) : (

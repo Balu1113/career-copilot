@@ -1,10 +1,10 @@
 from rest_framework import serializers
 
-from rag.services.vector_store import create_resume_vector_store
+
 
 from .models import Resume, ResumeIntelligence
 from .services.parser import extract_resume_text
-from .services.resume_intelligence import generate_resume_intelligence
+
 
 
 class ResumeSerializer(serializers.ModelSerializer):
@@ -17,12 +17,15 @@ class ResumeSerializer(serializers.ModelSerializer):
             "file",
             "uploaded_at",
             "updated_at",
+            "processing_status",
+            "processing_error",
         ]
-
         read_only_fields = [
             "id",
             "uploaded_at",
             "updated_at",
+            "processing_status",
+            "processing_error",
         ]
 
     def validate_file(self, value):
@@ -57,28 +60,7 @@ class ResumeSerializer(serializers.ModelSerializer):
         finally:
             resume.file.close()
 
-        # Create FAISS vector store for RAG
-        create_resume_vector_store(resume)
-
-        # Generate and save Resume Intelligence
-        try:
-            intelligence = generate_resume_intelligence(
-                resume.extracted_text
-            )
-
-            ResumeIntelligence.objects.update_or_create(
-                resume=resume,
-                defaults=intelligence.model_dump(),
-            )
-
-        except Exception as exc:
-            print(
-                f"Resume intelligence generation failed "
-                f"for resume {resume.id}: {exc}"
-            )
-
         return resume
-
 
 class ResumeIntelligenceSerializer(serializers.ModelSerializer):
 

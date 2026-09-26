@@ -15,6 +15,22 @@ class Resume(models.Model):
 
     extracted_text = models.TextField(blank=True)
 
+    processing_status = models.CharField(
+    max_length=20,
+    choices=[
+        ("pending", "Pending"),
+        ("processing", "Processing"),
+        ("completed", "Completed"),
+        ("failed", "Failed"),
+    ],
+    default="pending",
+    )
+
+    processing_error = models.TextField(
+        blank=True,
+        default="",
+    )
+
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     updated_at = models.DateTimeField(auto_now=True)
