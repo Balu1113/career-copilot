@@ -25,7 +25,8 @@ load_dotenv(BASE_DIR / ".env")
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY')
+# A local fallback keeps development work usable when .env is not configured.
+SECRET_KEY = os.getenv("SECRET_KEY") or "django-insecure-o4@ta=k3@20y4rc(xuat0_7_ih&*8$oza&&!7+)tt^f#1a$%zn"
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -52,6 +53,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Third-party apps
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
 
     # Local apps
@@ -201,6 +203,9 @@ CORS_ALLOWED_ORIGINS = [
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
 
 MEDIA_URL = "/media/"
