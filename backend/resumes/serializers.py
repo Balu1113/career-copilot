@@ -3,11 +3,8 @@ from rest_framework import serializers
 
 
 from .models import Resume, ResumeIntelligence
-from .services.parser import extract_resume_text
-
-
-
 class ResumeSerializer(serializers.ModelSerializer):
+    file = serializers.FileField(write_only=True)
 
     class Meta:
         model = Resume
@@ -42,25 +39,6 @@ class ResumeSerializer(serializers.ModelSerializer):
             )
 
         return value
-
-    def create(self, validated_data):
-        resume = Resume.objects.create(**validated_data)
-
-        try:
-            resume.file.open("rb")
-
-            resume.extracted_text = extract_resume_text(
-                resume.file
-            )
-
-            resume.save(
-                update_fields=["extracted_text"]
-            )
-
-        finally:
-            resume.file.close()
-
-        return resume
 
 class ResumeIntelligenceSerializer(serializers.ModelSerializer):
 

@@ -138,7 +138,7 @@ const steps = [
     howto: [
       "Start with your resume — the other features read from it.",
       "Your data is private to your account and never shared.",
-      "Update your profile and password any time in Settings.",
+      "Update your profile and password any time in My Profile.",
       "Reopen this guide from Getting Started in the sidebar.",
     ],
   },

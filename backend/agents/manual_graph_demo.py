@@ -1,4 +1,3 @@
-
 from .graph import build_career_graph
 
 
@@ -11,7 +10,6 @@ initial_state = {
     in Python, Django, REST APIs, LLMs, RAG, LangChain,
     vector databases and GenAI.
     """,
-
     "resume_context": """
     Candidate has experience with Python, Django,
     Django REST Framework and PostgreSQL.
@@ -26,7 +24,6 @@ initial_state = {
 
 
 result = graph.invoke(initial_state)
-
 
 print("\nJOB REQUIREMENTS:")
 print(result["job_requirements"])

@@ -106,8 +106,7 @@
   border-color: #6366f1;
 }
 
-.settings-save-btn,
-.logout-settings-btn {
+.settings-save-btn {
   border: none;
   border-radius: 8px;
   padding: 11px 17px;
@@ -125,21 +124,12 @@
   cursor: not-allowed;
 }
 
-.logout-settings-btn {
-  background: #dc2626;
-}
-
-.danger-card {
-  border-color: #fecaca;
-}
-
 @media (max-width: 600px) {
   .settings-card {
     padding: 18px;
   }
 
-  .settings-save-btn,
-  .logout-settings-btn {
+  .settings-save-btn {
     width: 100%;
     justify-content: center;
   }

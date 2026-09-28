@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from django.utils import timezone
 from .models import JobApplication
 from .serializers import JobApplicationSerializer
+from resumes.serializers import ResumeIntelligenceSerializer
 from .services.job_provider import IndianAPIJobProvider
 from .services.job_recommender import JobRecommender
 from jobs.services.application_analytics import get_application_analytics
@@ -209,7 +210,9 @@ class RecommendedJobsView(APIView):
                     user=request.user,
                 )
 
-                resume_intelligence = resume.resume_intelligence
+                resume_intelligence = ResumeIntelligenceSerializer(
+                    resume.intelligence
+                ).data
 
             elif resume_type == "generated":
                 from resume_builder.models import GeneratedResume

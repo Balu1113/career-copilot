@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import {
   CheckCircle2,
@@ -163,24 +163,6 @@ function getSpec(template = {}) {
     columns:
       (data.layout && Number(data.layout.columns)) || 1,
   };
-}
-
-
-function mediaUrl(path) {
-  if (!path) {
-    return null;
-  }
-
-  if (/^https?:\/\//i.test(path)) {
-    return path;
-  }
-
-  const base =
-    api.defaults.baseURL || "http://127.0.0.1:8000/api";
-
-  const origin = base.replace(/\/api\/?$/, "");
-
-  return `${origin}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 
 
@@ -485,6 +467,37 @@ function TemplatePreviewModal({
   onSelect,
   onClose,
 }) {
+  const [loadedSample, setLoadedSample] = useState({ path: "", url: "" });
+
+  useEffect(() => {
+    if (!template?.sample_file_url || template.file_type !== "pdf") {
+      return undefined;
+    }
+
+    let cancelled = false;
+    let objectUrl = "";
+
+    api.get(template.sample_file_url, { responseType: "blob" })
+      .then((response) => {
+        objectUrl = window.URL.createObjectURL(response.data);
+        if (cancelled) {
+          window.URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        setLoadedSample({ path: template.sample_file_url, url: objectUrl });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLoadedSample({ path: template.sample_file_url, url: "" });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) window.URL.revokeObjectURL(objectUrl);
+    };
+  }, [template?.sample_file_url, template?.file_type]);
+
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
@@ -505,7 +518,9 @@ function TemplatePreviewModal({
   const spec = getSpec(template);
   const data = template.template_data || {};
 
-  const fileUrl = mediaUrl(template.sample_file);
+  const fileUrl = loadedSample.path === template.sample_file_url
+    ? loadedSample.url
+    : "";
   const canShowFile =
     Boolean(fileUrl) && template.file_type === "pdf";
 

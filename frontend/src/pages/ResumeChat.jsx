@@ -23,7 +23,7 @@ function ResumeChat() {
         if (response.data.length > 0) {
           setResumeId(String(response.data[0].id));
         }
-      } catch (err) {
+      } catch {
         setError("Unable to load your resumes.");
       } finally {
         setLoadingResumes(false);

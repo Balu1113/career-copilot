@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 from datetime import timedelta
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -24,13 +25,13 @@ load_dotenv(BASE_DIR / ".env")
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-# A local fallback keeps development work usable when .env is not configured.
-SECRET_KEY = os.getenv("SECRET_KEY") or "django-insecure-o4@ta=k3@20y4rc(xuat0_7_ih&*8$oza&&!7+)tt^f#1a$%zn"
-
-
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG", "True").lower() == "true"
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+
+if not SECRET_KEY:
+    raise ImproperlyConfigured("SECRET_KEY must be configured in the environment.")
 
 ALLOWED_HOSTS = [
     host.strip()

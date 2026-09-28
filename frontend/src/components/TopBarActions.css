@@ -1,0 +1,53 @@
+.topbar-actions {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+
+  z-index: 60;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  padding: 9px 15px;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  color: #475569;
+
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+.topbar-action:hover {
+  background: #f8fafc;
+  color: #172033;
+  border-color: #cbd5e1;
+}
+
+.topbar-action.active {
+  color: #4f46e5;
+  background: #eef2ff;
+  border-color: #dfe3ff;
+}
+
+.topbar-logout {
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.topbar-logout:hover {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fca5a5;
+}

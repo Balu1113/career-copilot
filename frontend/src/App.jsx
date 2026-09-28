@@ -1,42 +1,51 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword";
-import Dashboard from "./pages/Dashboard";
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
 import ProtectedRoute from "./components/ProtectedRoute";
-import Resumes from "./pages/Resumes";
 import Sidebar from "./components/Sidebar";
-import Applications from "./pages/Applications";
-import InterviewPrep from "./pages/InterviewPrep";
-import Settings from "./pages/Settings";
-import ResumeChat from "./pages/ResumeChat";
-import CareerAnalysis from "./pages/CareerAnalysis";
-import CareerHistory from "./pages/CareerHistory";
-import CareerHistoryDetail from "./pages/CareerHistoryDetail";
-import ResumeIntelligence from "./pages/ResumeIntelligence";
-import InterviewPractice from "./pages/InterviewPractice";
-import ResumeBuilder from "./pages/ResumeBuilder";
-import ResumeEdit from "./pages/ResumeEdit";
-import Jobs from "./pages/Jobs";
-import RecommendedJobs from "./pages/RecommendedJobs";
-import CareerRoadmap from "./pages/CareerRoadmap";
-import InterviewSimulator from "./pages/InterviewSimulator";
-import InterviewHistory from "./pages/InterviewHistory";
-import InterviewPerformance from "./pages/InterviewPerformance";
+const Resumes = lazy(() => import("./pages/Resumes"));
+const Applications = lazy(() => import("./pages/Applications"));
+const InterviewPrep = lazy(() => import("./pages/InterviewPrep"));
+const Settings = lazy(() => import("./pages/Settings"));
+const ResumeChat = lazy(() => import("./pages/ResumeChat"));
+const CareerAnalysis = lazy(() => import("./pages/CareerAnalysis"));
+const CareerHistory = lazy(() => import("./pages/CareerHistory"));
+const CareerHistoryDetail = lazy(() => import("./pages/CareerHistoryDetail"));
+const ResumeIntelligence = lazy(() => import("./pages/ResumeIntelligence"));
+const InterviewPractice = lazy(() => import("./pages/InterviewPractice"));
+const ResumeBuilder = lazy(() => import("./pages/ResumeBuilder"));
+const ResumeEdit = lazy(() => import("./pages/ResumeEdit"));
+const Jobs = lazy(() => import("./pages/Jobs"));
+const RecommendedJobs = lazy(() => import("./pages/RecommendedJobs"));
+const CareerRoadmap = lazy(() => import("./pages/CareerRoadmap"));
+const InterviewSimulator = lazy(() => import("./pages/InterviewSimulator"));
+const InterviewHistory = lazy(() => import("./pages/InterviewHistory"));
+const InterviewPerformance = lazy(() => import("./pages/InterviewPerformance"));
 import OnboardingTour from "./components/OnboardingTour";
+import TopBarActions from "./components/TopBarActions";
 
 function App() {
   return (
     <BrowserRouter>
       <OnboardingTour />
+      <TopBarActions />
 
+      <Suspense fallback={<div className="route-loading" role="status">Loading...</div>}>
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route
+          path="/reset-password/:uidb64/:token"
+          element={<ResetPassword />}
+        />
 
         <Route
           path="/dashboard"
@@ -231,6 +240,7 @@ function App() {
           }
         />
       </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

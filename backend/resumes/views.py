@@ -3,12 +3,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from django.http import FileResponse
-import threading
 from users.models import UserProfile
 
-from .models import Resume, ResumeIntelligence
+from .models import Resume, ResumeIntelligence, ResumeProcessingJob
 from .serializers import ResumeSerializer, ResumeIntelligenceSerializer
-from .services.resume_processing import process_resume_ai
 from .services.resume_intelligence import generate_resume_intelligence
 
 class ResumeListCreateView(
@@ -26,12 +24,7 @@ class ResumeListCreateView(
 
     def perform_create(self, serializer):
         resume = serializer.save(user=self.request.user)
-
-        print(
-            f"[RESUME UPLOAD] Resume {resume.id} saved. "
-            f"Starting AI processing thread.",
-            flush=True,
-        )
+        ResumeProcessingJob.objects.create(resume=resume)
 
         profile, _ = UserProfile.objects.get_or_create(
             user=self.request.user
@@ -41,17 +34,6 @@ class ResumeListCreateView(
             profile.active_resume = resume
             profile.save(update_fields=["active_resume"])
 
-        threading.Thread(
-            target=process_resume_ai,
-            args=(resume.id,),
-            daemon=True,
-        ).start()
-
-        print(
-            f"[RESUME UPLOAD] AI processing thread started "
-            f"for resume {resume.id}.",
-            flush=True,
-        )
 
 
 class ResumeDetailView(

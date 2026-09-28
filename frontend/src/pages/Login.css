@@ -223,3 +223,10 @@
     font-size: 24px;
   }
 }
+
+.login-notice {
+  margin: 0 0 18px;
+  color: #166534;
+  font-size: 14px;
+  text-align: center;
+}

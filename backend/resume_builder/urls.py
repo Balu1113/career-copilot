@@ -10,6 +10,7 @@ from .views import (
     ResumeSummaryGenerationView,
     ResumeTemplateDetailView,
     ResumeTemplateListCreateView,
+    ResumeTemplateSampleDownloadView,
     UploadedResumeEditForkView,
 )
 
@@ -24,6 +25,11 @@ urlpatterns = [
         "templates/<int:template_id>/",
         ResumeTemplateDetailView.as_view(),
         name="resume-template-detail",
+    ),
+    path(
+        "templates/<int:template_id>/sample/",
+        ResumeTemplateSampleDownloadView.as_view(),
+        name="resume-template-sample-download",
     ),
 
     path(

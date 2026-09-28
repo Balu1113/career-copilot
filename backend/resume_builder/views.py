@@ -2,6 +2,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.http import FileResponse
+from django.urls import reverse
 
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -97,6 +98,16 @@ def _render_generated_resume_docx(
     )
 
 
+def _generated_resume_download_url(generated_resume):
+    if not generated_resume.output_file:
+        return None
+
+    return reverse(
+        "generated-resume-download",
+        kwargs={"resume_id": generated_resume.id},
+    ).removeprefix("/api/")
+
+
 class ResumeTemplateListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -161,6 +172,38 @@ class ResumeTemplateDetailView(APIView):
         return Response(
             {"detail": "Template deleted successfully."},
             status=204,
+        )
+
+
+class ResumeTemplateSampleDownloadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, template_id):
+        try:
+            template = ResumeTemplate.objects.get(
+                id=template_id,
+                user=request.user,
+            )
+        except ResumeTemplate.DoesNotExist:
+            return Response({"detail": "Template not found."}, status=404)
+
+        if not template.sample_file:
+            return Response(
+                {"detail": "Template sample is not available."},
+                status=404,
+            )
+
+        try:
+            file_handle = template.sample_file.open("rb")
+        except FileNotFoundError:
+            return Response(
+                {"detail": "Template sample file was not found."},
+                status=404,
+            )
+
+        return FileResponse(
+            file_handle,
+            filename=Path(template.sample_file.name).name,
         )
 
 
@@ -230,7 +273,8 @@ class GeneratedResumeListCreateView(APIView):
 
     def post(self, request):
         serializer = GeneratedResumeSerializer(
-            data=request.data
+            data=request.data,
+            context={"request": request},
         )
 
         serializer.is_valid(
@@ -683,12 +727,8 @@ class ResumeContentGenerationView(APIView):
                     "title": generated_resume.title,
                     "template_id": template.id,
                     "content": final_content,
-                    "output_file": (
+                    "output_file": _generated_resume_download_url(
                         generated_resume
-                        .output_file
-                        .url
-                        if generated_resume.output_file
-                        else None
                     ),
                     "status": (
                         generated_resume.status
@@ -899,10 +939,8 @@ class GeneratedResumeUpdateView(APIView):
                 {
                     "id": generated_resume.id,
                     "content": generated_resume.content,
-                    "output_file": (
+                    "output_file": _generated_resume_download_url(
                         generated_resume
-                        .output_file
-                        .url
                     ),
                     "status": (
                         generated_resume.status
@@ -1047,12 +1085,8 @@ class GeneratedResumeAIEditView(APIView):
                 {
                     "id": generated_resume.id,
                     "content": generated_resume.content,
-                    "output_file": (
+                    "output_file": _generated_resume_download_url(
                         generated_resume
-                        .output_file
-                        .url
-                        if generated_resume.output_file
-                        else None
                     ),
                     "status": (
                         generated_resume.status
@@ -1095,9 +1129,7 @@ class UploadedResumeEditForkView(APIView):
         if not resume.file:
             return None
 
-        return request.build_absolute_uri(
-            resume.file.url
-        )
+        return Path(resume.file.name).name
 
     def post(self, request, resume_id):
         try:
@@ -1135,12 +1167,8 @@ class UploadedResumeEditForkView(APIView):
                         resume,
                     ),
                     "content": existing_fork.content,
-                    "output_file": (
+                    "output_file": _generated_resume_download_url(
                         existing_fork
-                        .output_file
-                        .url
-                        if existing_fork.output_file
-                        else None
                     ),
                     "status": existing_fork.status,
                     "created_at": (
@@ -1212,12 +1240,8 @@ class UploadedResumeEditForkView(APIView):
                         resume,
                     ),
                     "content": generated_resume.content,
-                    "output_file": (
+                    "output_file": _generated_resume_download_url(
                         generated_resume
-                        .output_file
-                        .url
-                        if generated_resume.output_file
-                        else None
                     ),
                     "status": (
                         generated_resume.status

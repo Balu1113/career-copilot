@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   Brain,
-  FileText,
   Loader2,
 } from "lucide-react";
 
@@ -52,7 +51,6 @@ function ResumeIntelligence() {
 
   useEffect(() => {
     if (!resumeId) {
-      setIntelligence(null);
       return;
     }
 

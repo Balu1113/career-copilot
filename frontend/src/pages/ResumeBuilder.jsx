@@ -1631,7 +1631,7 @@ function ResumeBuilder() {
           width: 100%;
           max-width: 1450px;
           margin: 0 auto;
-          padding: 30px 38px 60px;
+          padding: 76px 38px 60px;
         }
 
         .rb-topbar {
@@ -2709,7 +2709,7 @@ function ResumeBuilder() {
 
         @media (max-width: 700px) {
           .rb-container {
-            padding: 20px 14px 40px;
+            padding: 76px 14px 40px;
           }
 
           .rb-ai-badge {

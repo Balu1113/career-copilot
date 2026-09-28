@@ -214,7 +214,38 @@ function Resumes() {
 
   // Initial load
   useEffect(() => {
-    fetchResumes();
+    let cancelled = false;
+
+    Promise.all([
+      api.get("/resumes/"),
+      api.get("/resume-builder/resumes/"),
+    ])
+      .then(([uploadedResponse, generatedResponse]) => {
+        if (cancelled) return;
+        setError("");
+        setUploadedResumes(
+          Array.isArray(uploadedResponse.data)
+            ? uploadedResponse.data
+            : [],
+        );
+        setGeneratedResumes(
+          Array.isArray(generatedResponse.data)
+            ? generatedResponse.data
+            : [],
+        );
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error(err);
+        setError("Unable to load resumes.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Poll while resume AI processing is pending/active

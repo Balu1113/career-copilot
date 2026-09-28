@@ -1,13 +1,11 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import api from "../services/api";
 import "./Login.css";
 
 
 function ForgotPassword() {
-  const navigate = useNavigate();
-
   const [email, setEmail] = useState("");
 
   const [error, setError] = useState("");

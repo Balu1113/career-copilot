@@ -1,5 +1,6 @@
 from rag.services.vector_store import create_resume_vector_store
 from ..models import Resume, ResumeIntelligence
+from .parser import extract_resume_text
 from .resume_intelligence import generate_resume_intelligence
 
 
@@ -20,6 +21,13 @@ def process_resume_ai(resume_id):
                 "processing_error",
             ]
         )
+
+        resume.file.open("rb")
+        try:
+            resume.extracted_text = extract_resume_text(resume.file)
+        finally:
+            resume.file.close()
+        resume.save(update_fields=["extracted_text"])
 
         print(
             f"[RESUME PROCESSING] Resume {resume_id}: "

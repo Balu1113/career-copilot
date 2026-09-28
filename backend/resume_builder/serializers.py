@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from django.urls import reverse
 from rest_framework import serializers
 
 from .models import (
@@ -10,6 +11,9 @@ from .services.template_analyzer import analyze_template
 
 
 class ResumeTemplateSerializer(serializers.ModelSerializer):
+    sample_file = serializers.FileField(write_only=True, required=False)
+    sample_file_url = serializers.SerializerMethodField()
+
     class Meta:
         model = ResumeTemplate
         fields = [
@@ -20,6 +24,7 @@ class ResumeTemplateSerializer(serializers.ModelSerializer):
             "is_builtin",
             "ats_score",
             "sample_file",
+            "sample_file_url",
             "file_type",
             "template_data",
             "created_at",
@@ -31,6 +36,7 @@ class ResumeTemplateSerializer(serializers.ModelSerializer):
             "description",
             "is_builtin",
             "ats_score",
+            "sample_file_url",
             "file_type",
             "template_data",
             "created_at",
@@ -54,6 +60,15 @@ class ResumeTemplateSerializer(serializers.ModelSerializer):
             )
 
         return value
+
+    def get_sample_file_url(self, template):
+        if not template.sample_file:
+            return None
+
+        return reverse(
+            "resume-template-sample-download",
+            kwargs={"template_id": template.id},
+        ).removeprefix("/api/")
 
     def create(self, validated_data):
         request = self.context.get("request")
@@ -93,6 +108,8 @@ class ResumeTemplateSerializer(serializers.ModelSerializer):
 
 
 class GeneratedResumeSerializer(serializers.ModelSerializer):
+    output_file = serializers.SerializerMethodField()
+
     class Meta:
         model = GeneratedResume
         fields = [
@@ -138,3 +155,12 @@ class GeneratedResumeSerializer(serializers.ModelSerializer):
             )
 
         return source_resume
+
+    def get_output_file(self, generated_resume):
+        if not generated_resume.output_file:
+            return None
+
+        return reverse(
+            "generated-resume-download",
+            kwargs={"resume_id": generated_resume.id},
+        ).removeprefix("/api/")

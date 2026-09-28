@@ -33,14 +33,54 @@ const initialForm = {
   notes: "",
 };
 
+const formFromLocationState = (state) => {
+  if (!state?.fromCareerAnalysis || !state?.analysis) {
+    return initialForm;
+  }
+
+  const analysis = state.analysis;
+  const recommendation = analysis.career_recommendation;
+  const skillGap = analysis.skill_gap_analysis;
+  const notes = [
+    "Career Analysis",
+    "",
+    recommendation?.match_summary
+      ? `Match Summary: ${recommendation.match_summary}`
+      : "",
+    "",
+    skillGap?.missing_skills?.length
+      ? `Missing Skills: ${skillGap.missing_skills
+          .map((item) => (typeof item === "object" ? item.skill : item))
+          .join(", ")}`
+      : "",
+    "",
+    recommendation?.next_steps?.length
+      ? `Next Steps:\n${recommendation.next_steps
+          .map((item, index) => {
+            const step = typeof item === "object" ? item.step : item;
+            return `${index + 1}. ${step}`;
+          })
+          .join("\n")}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return { ...initialForm, notes };
+};
+
 function Applications() {
   const location = useLocation();
 
   const [applications, setApplications] = useState([]);
   const [analytics, setAnalytics] = useState(null);
 
-  const [form, setForm] = useState(initialForm);
-  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState(() =>
+    formFromLocationState(location.state),
+  );
+  const [showForm, setShowForm] = useState(() =>
+    Boolean(location.state?.fromCareerAnalysis && location.state?.analysis),
+  );
   const [editingApplication, setEditingApplication] = useState(null);
 
   const [filter, setFilter] = useState("all");
@@ -50,23 +90,6 @@ function Applications() {
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState("");
-
-  const fetchApplications = async () => {
-    try {
-      setLoading(true);
-      setError("");
-
-      const response = await api.get("/jobs/");
-      setApplications(response.data);
-    } catch (err) {
-      setError(
-        err.response?.data?.detail ||
-          "Unable to load your applications.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchAnalytics = async () => {
     try {
@@ -81,65 +104,38 @@ function Applications() {
     }
   };
 
-  const refreshApplicationData = async () => {
-    await Promise.all([
-      fetchApplications(),
-      fetchAnalytics(),
-    ]);
-  };
-
   useEffect(() => {
-    refreshApplicationData();
+    let cancelled = false;
+
+    api.get("/jobs/")
+      .then((response) => {
+        if (!cancelled) setApplications(response.data);
+      })
+      .catch(() => {
+        if (!cancelled) setError("Unable to load your applications.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    api.get("/jobs/analytics/")
+      .then((response) => {
+        if (!cancelled) setAnalytics(response.data);
+      })
+      .catch((err) => {
+        console.error("Failed to load application analytics:", err);
+      })
+      .finally(() => {
+        if (!cancelled) setAnalyticsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     if (location.state?.fromCareerAnalysis && location.state?.analysis) {
-      const analysis = location.state.analysis;
-
-      const recommendation = analysis.career_recommendation;
-      const skillGap = analysis.skill_gap_analysis;
-
-      const notes = [
-        "Career Analysis",
-        "",
-        recommendation?.match_summary
-          ? `Match Summary: ${recommendation.match_summary}`
-          : "",
-        "",
-        skillGap?.missing_skills?.length
-          ? `Missing Skills: ${skillGap.missing_skills
-              .map((item) =>
-                typeof item === "object" ? item.skill : item,
-              )
-              .join(", ")}`
-          : "",
-        "",
-        recommendation?.next_steps?.length
-          ? `Next Steps:\n${recommendation.next_steps
-              .map((item, index) => {
-                const step =
-                  typeof item === "object" ? item.step : item;
-
-                return `${index + 1}. ${step}`;
-              })
-              .join("\n")}`
-          : "",
-      ]
-        .filter(Boolean)
-        .join("\n");
-
-      setForm({
-        company: "",
-        job_title: "",
-        job_url: "",
-        status: "saved",
-        applied_date: "",
-        follow_up_date: "",
-        notes,
-      });
-
-      setShowForm(true);
-
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
@@ -221,7 +217,7 @@ function Applications() {
       );
 
       await fetchAnalytics();
-    } catch (err) {
+    } catch {
       setError("Unable to update application status.");
     }
   };
@@ -263,7 +259,7 @@ function Applications() {
       );
 
       await fetchAnalytics();
-    } catch (err) {
+    } catch {
       setError("Unable to delete the application.");
     }
   };

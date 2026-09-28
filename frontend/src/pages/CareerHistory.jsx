@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   Brain,
   Calendar,
-  ChevronRight,
   FileText,
   Loader2,
   Trash2,

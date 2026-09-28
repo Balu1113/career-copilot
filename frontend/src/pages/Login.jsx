@@ -1,5 +1,5 @@
 ﻿import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 
 import api from "../services/api";
 import {
@@ -11,6 +11,7 @@ import "./Login.css";
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -61,7 +62,6 @@ function Login() {
         response.data.refresh
       );
 
-      window.alert("Login successful!");
       navigate("/dashboard");
 
       if (localStorage.getItem(ONBOARDING_COMPLETED_KEY) !== "1") {
@@ -90,6 +90,12 @@ function Login() {
           <h1>AI Career Copilot</h1>
           <h2>Login</h2>
         </div>
+
+        {location.state?.message && (
+          <p className="login-notice" role="status">
+            {location.state.message}
+          </p>
+        )}
 
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="form-group">

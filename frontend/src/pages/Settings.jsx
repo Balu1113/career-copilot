@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   Lock,
-  LogOut,
   Save,
   User,
 } from "lucide-react";
@@ -40,7 +39,7 @@ function Settings() {
           username: response.data.username || "",
           email: response.data.email || "",
         });
-      } catch (err) {
+      } catch {
         setError("Unable to load profile.");
       } finally {
         setLoading(false);
@@ -119,22 +118,15 @@ function Settings() {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-
-    window.location.href = "/login";
-  };
-
   return (
     <div className="dashboard-layout">
       <Sidebar />
 
       <main className="dashboard-main settings-page">
         <div className="settings-header">
-          <h1>Settings</h1>
+          <h1>My Profile</h1>
           <p>
-            Manage your profile and account settings.
+            Manage your profile and account security.
           </p>
         </div>
 
@@ -305,29 +297,6 @@ function Settings() {
                     : "Change Password"}
                 </button>
               </form>
-            </section>
-
-            <section className="settings-card danger-card">
-              <div className="settings-card-header">
-                <div className="settings-icon">
-                  <LogOut size={20} />
-                </div>
-
-                <div>
-                  <h2>Session</h2>
-                  <p>
-                    Sign out from this device.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                className="logout-settings-btn"
-                onClick={logout}
-              >
-                <LogOut size={17} />
-                Logout
-              </button>
             </section>
           </>
         )}

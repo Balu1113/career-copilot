@@ -192,10 +192,11 @@ function ResumeEdit() {
   const [title, setTitle] = useState("");
   const [sourceFile, setSourceFile] = useState("");
   const [sourcePreviewUrl, setSourcePreviewUrl] = useState("");
+  const [loadedResumeKey, setLoadedResumeKey] = useState("");
+  const loading = loadedResumeKey !== `${type}:${id}`;
 
   const [content, setContent] = useState(emptyResumeContent);
 
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
@@ -208,80 +209,78 @@ function ResumeEdit() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const loadResume = async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      if (type === "generated") {
-        const response = await api.get(
-          "/resume-builder/resumes/"
-        );
-
-        const list = Array.isArray(response.data)
-          ? response.data
-          : [];
-
-        const found = list.find(
-          (resume) =>
-            String(resume.id) === String(id)
-        );
-
-        if (!found) {
-          throw {
-            response: {
-              data: { detail: "Resume not found." },
-            },
-          };
-        }
-
-        setResumeId(found.id);
-        setTitle(found.title);
-        setSourceFile("");
-        setContent({
-          ...emptyResumeContent,
-          ...(found.content || {}),
-        });
-
-        if (found.job_description) {
-          setJobDescription(found.job_description);
-        }
-      } else if (type === "uploaded") {
-        const response = await api.post(
-          `/resume-builder/resumes/edit-from-upload/${id}/`
-        );
-
-        const data = response.data;
-
-        setResumeId(data.id);
-        setTitle(data.title);
-        setSourceFile(data.source_file || "");
-        setContent({
-          ...emptyResumeContent,
-          ...(data.content || {}),
-        });
-      } else {
-        throw {
-          response: {
-            data: { detail: "Unknown resume type." },
-          },
-        };
-      }
-    } catch (err) {
-      console.error(err);
-
-      setError(
-        err?.response?.data?.detail ||
-          "Unable to load this resume for editing."
+  const loadResume = async (routeType, routeId) => {
+    if (routeType === "generated") {
+      const response = await api.get("/resume-builder/resumes/");
+      const list = Array.isArray(response.data) ? response.data : [];
+      const found = list.find(
+        (resume) => String(resume.id) === String(routeId)
       );
-    } finally {
-      setLoading(false);
+
+      if (!found) {
+        throw new Error("Resume not found.");
+      }
+
+      return {
+        id: found.id,
+        title: found.title,
+        sourceFile: "",
+        content: found.content,
+        jobDescription: found.job_description || "",
+      };
     }
+
+    if (routeType === "uploaded") {
+      const response = await api.post(
+        `/resume-builder/resumes/edit-from-upload/${routeId}/`
+      );
+      const data = response.data;
+
+      return {
+        id: data.id,
+        title: data.title,
+        sourceFile: data.source_file || "",
+        content: data.content,
+        jobDescription: "",
+      };
+    }
+
+    throw new Error("Unknown resume type.");
   };
 
   useEffect(() => {
-    loadResume();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let cancelled = false;
+    const loadKey = `${type}:${id}`;
+
+    loadResume(type, id)
+      .then((resume) => {
+        if (cancelled) return;
+        setError("");
+        setResumeId(resume.id);
+        setTitle(resume.title);
+        setSourceFile(resume.sourceFile);
+        setContent({
+          ...emptyResumeContent,
+          ...(resume.content || {}),
+        });
+        setJobDescription(resume.jobDescription);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error(err);
+        setError(
+          err?.response?.data?.detail ||
+            err.message ||
+            "Unable to load this resume for editing."
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoadedResumeKey(loadKey);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [type, id]);
 
   useEffect(() => {
@@ -805,9 +804,10 @@ function ResumeEdit() {
 
               <a
                 className="ed-btn ed-btn-outline"
-                href={sourceFile}
+                href={sourcePreviewUrl || undefined}
                 target="_blank"
                 rel="noreferrer"
+                aria-disabled={!sourcePreviewUrl}
               >
                 Open
               </a>
@@ -828,7 +828,12 @@ function ResumeEdit() {
                 <p>
                   The original DOCX file cannot be rendered directly in the browser.
                 </p>
-                <a href={sourceFile} target="_blank" rel="noreferrer">
+                <a
+                  href={sourcePreviewUrl || undefined}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-disabled={!sourcePreviewUrl}
+                >
                   Download the original resume
                 </a>
               </div>
