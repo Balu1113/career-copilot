@@ -5,10 +5,21 @@ from rest_framework import serializers
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
+    email = serializers.EmailField(required=True)
 
     class Meta:
         model = User
         fields = ["username", "email", "password"]
+
+    def validate_email(self, value):
+        if User.objects.filter(
+            email__iexact=value.strip()
+        ).exists():
+            raise serializers.ValidationError(
+                "An account with this email already exists."
+            )
+
+        return value.strip()
 
     def create(self, validated_data):
         user = User.objects.create_user(
@@ -46,18 +57,29 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
     
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
+    email = serializers.EmailField(write_only=True)
     password = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
+        email = attrs["email"].strip()
+
+        user = User.objects.filter(
+            email__iexact=email
+        ).first()
+
+        if user is None:
+            raise serializers.ValidationError(
+                "Invalid email or password."
+            )
+
         user = authenticate(
-            username=attrs["username"],
+            username=user.username,
             password=attrs["password"],
         )
 
         if user is None:
             raise serializers.ValidationError(
-                "Invalid username or password."
+                "Invalid email or password."
             )
 
         if not user.is_active:

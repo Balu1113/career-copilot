@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
 import api from "../services/api";
@@ -12,7 +12,7 @@ import "./Login.css";
 function Login() {
   const navigate = useNavigate();
 
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -23,10 +23,10 @@ function Login() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const trimmedUsername = username.trim();
+    const trimmedEmail = email.trim();
 
-    if (!trimmedUsername) {
-      const message = "Username is required.";
+    if (!trimmedEmail) {
+      const message = "Email is required.";
       setError(message);
       window.alert(message);
       return;
@@ -46,7 +46,7 @@ function Login() {
       const response = await api.post(
         "/auth/login/",
         {
-          username: trimmedUsername,
+          email: trimmedEmail,
           password,
         }
       );
@@ -72,6 +72,7 @@ function Login() {
       const message =
         error.response?.data?.detail ||
         error.response?.data?.non_field_errors?.[0] ||
+        error.response?.data?.email?.[0] ||
         "Login failed.";
 
       setError(message);
@@ -92,14 +93,14 @@ function Login() {
 
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Username</label>
+            <label>Email</label>
             <input
-              type="text"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
               required
-              placeholder="Enter your username"
-              autoComplete="username"
+              placeholder="Enter your email"
+              autoComplete="email"
             />
           </div>
 
