@@ -24,10 +24,13 @@ import CareerRoadmap from "./pages/CareerRoadmap";
 import InterviewSimulator from "./pages/InterviewSimulator";
 import InterviewHistory from "./pages/InterviewHistory";
 import InterviewPerformance from "./pages/InterviewPerformance";
+import OnboardingTour from "./components/OnboardingTour";
 
 function App() {
   return (
     <BrowserRouter>
+      <OnboardingTour />
+
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
 

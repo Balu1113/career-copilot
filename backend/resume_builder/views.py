@@ -15,6 +15,7 @@ from .serializers import (
     GeneratedResumeSerializer,
     ResumeTemplateSerializer,
 )
+from .services.builtin_templates import ensure_builtin_templates
 from .services.docx_renderer import render_resume_to_docx
 from .services.pdf_renderer import render_resume_to_pdf
 from .services.resume_generator import (
@@ -100,10 +101,12 @@ class ResumeTemplateListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        ensure_builtin_templates(request.user)
+
         templates = (
             ResumeTemplate.objects
             .filter(user=request.user)
-            .order_by("-created_at")
+            .order_by("-is_builtin", "-created_at")
         )
 
         serializer = ResumeTemplateSerializer(
@@ -145,6 +148,12 @@ class ResumeTemplateDetailView(APIView):
             return Response(
                 {"detail": "Template not found."},
                 status=404,
+            )
+
+        if template.is_builtin:
+            return Response(
+                {"detail": "Built-in templates cannot be deleted."},
+                status=400,
             )
 
         template.delete()

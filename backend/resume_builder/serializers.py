@@ -15,6 +15,10 @@ class ResumeTemplateSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "slug",
+            "description",
+            "is_builtin",
+            "ats_score",
             "sample_file",
             "file_type",
             "template_data",
@@ -23,11 +27,23 @@ class ResumeTemplateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "slug",
+            "description",
+            "is_builtin",
+            "ats_score",
             "file_type",
             "template_data",
             "created_at",
             "updated_at",
         ]
+
+    def validate(self, attrs):
+        if not attrs.get("sample_file"):
+            raise serializers.ValidationError(
+                {"sample_file": "A sample resume file is required."}
+            )
+
+        return attrs
 
     def validate_sample_file(self, value):
         extension = Path(value.name).suffix.lower()

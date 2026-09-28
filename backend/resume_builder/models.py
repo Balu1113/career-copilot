@@ -31,8 +31,31 @@ class ResumeTemplate(models.Model):
 
     name = models.CharField(max_length=150)
 
+    # Built-in templates are shipped with the product and are
+    # created automatically for every account. They have no
+    # uploaded sample file.
+    slug = models.SlugField(
+        max_length=60,
+        blank=True,
+        default="",
+    )
+
+    description = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    is_builtin = models.BooleanField(
+        default=False,
+    )
+
+    ats_score = models.PositiveSmallIntegerField(
+        default=0,
+    )
+
     sample_file = models.FileField(
-        upload_to="resume_templates/%Y/%m/"
+        upload_to="resume_templates/%Y/%m/",
+        blank=True,
     )
 
     file_type = models.CharField(

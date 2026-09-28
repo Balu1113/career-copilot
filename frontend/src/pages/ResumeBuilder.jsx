@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import {
   FileText,
@@ -20,10 +20,17 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
+  Eye,
   WandSparkles,
 } from "lucide-react";
 
 import api from "../services/api";
+
+import TemplatePreviewModal, {
+  TemplateMock,
+} from "../components/TemplatePreview";
+
+import "./ResumeBuilder.css";
 
 const emptyResumeContent = {
   personal: {
@@ -259,6 +266,132 @@ function ResumeBuilder() {
   const [success, setSuccess] = useState("");
 
   const [showEditor, setShowEditor] = useState(false);
+  const [previewTemplate, setPreviewTemplate] =
+    useState(null);
+
+  const [templateFileUrl, setTemplateFileUrl] =
+    useState(null);
+
+  const templateUrlRef = useRef(null);
+
+  const builtinTemplates = templates.filter(
+    (template) => template.is_builtin
+  );
+
+  const uploadedTemplates = templates.filter(
+    (template) => !template.is_builtin
+  );
+
+  const handleSelectTemplate = (template) => {
+    setSelectedTemplateId(String(template.id));
+    setPreviewTemplate(null);
+    setSuccess(
+      `"${template.name}" selected as your template.`
+    );
+  };
+
+  const clearTemplateFile = () => {
+    if (templateUrlRef.current) {
+      URL.revokeObjectURL(templateUrlRef.current);
+      templateUrlRef.current = null;
+    }
+
+    setTemplateFile(null);
+    setTemplateFileUrl(null);
+  };
+
+  const handleTemplateFileChange = (file) => {
+    if (templateUrlRef.current) {
+      URL.revokeObjectURL(templateUrlRef.current);
+      templateUrlRef.current = null;
+    }
+
+    const isPdf =
+      Boolean(file) &&
+      (file.type === "application/pdf" ||
+        /\.pdf$/i.test(file.name || ""));
+
+    if (isPdf) {
+      templateUrlRef.current = URL.createObjectURL(file);
+    }
+
+    setTemplateFile(file);
+    setTemplateFileUrl(templateUrlRef.current);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (templateUrlRef.current) {
+        URL.revokeObjectURL(templateUrlRef.current);
+      }
+    };
+  }, []);
+
+  const renderTemplateCard = (template) => {
+    const isSelected =
+      String(selectedTemplateId) ===
+      String(template.id);
+
+    return (
+      <div
+        key={template.id}
+        className={`rb-template-card ${
+          isSelected ? "selected" : ""
+        }`}
+      >
+        <button
+          type="button"
+          className="rb-template-card-body"
+          onClick={() => setPreviewTemplate(template)}
+          aria-label={`Preview ${template.name}`}
+        >
+          <TemplateMock template={template} />
+
+          <div className="rb-template-card-meta">
+            <strong>{template.name}</strong>
+
+            <span>
+              {template.is_builtin
+                ? `ATS ${template.ats_score}`
+                : template.file_type?.toUpperCase() ||
+                  "UPLOAD"}
+            </span>
+          </div>
+
+          <span className="rb-template-card-hint">
+            <Eye size={12} />
+            Click to preview
+          </span>
+        </button>
+
+        <div className="rb-template-card-foot">
+          {isSelected ? (
+            <span className="rb-template-card-selected">
+              <CheckCircle2 size={13} />
+              Selected
+            </span>
+          ) : (
+            <span className="rb-template-card-placeholder">
+              Not selected
+            </span>
+          )}
+
+          {!template.is_builtin && (
+            <button
+              type="button"
+              className="rb-template-card-del"
+              title="Delete template"
+              onClick={() =>
+                handleDeleteTemplate(template.id)
+              }
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => {
     let isActive = true;
@@ -430,7 +563,7 @@ function ResumeBuilder() {
         String(newTemplate.id)
       );
 
-      setTemplateFile(null);
+      clearTemplateFile();
       setTemplateName("");
 
       setSuccess(
@@ -2840,107 +2973,57 @@ function ResumeBuilder() {
                   <SectionHeader
                     icon={Palette}
                     title="Choose resume template"
-                    description="The sample resume is used as the visual design and layout reference."
+                    description="Click a template to preview it first, then choose it. Every built-in option is single-column and ATS friendly."
                   />
 
-                  <div className="rb-template-list">
-                    {templates.length ===
-                      0 ? (
-                      <div className="rb-empty-template">
-                        <Palette size={18} />
+                  {templates.length === 0 ? (
+                    <div className="rb-empty-template">
+                      <Palette size={18} />
 
-                        <div>
-                          <strong>
-                            No templates
-                            uploaded
-                          </strong>
+                      <div>
+                        <strong>No templates available</strong>
 
-                          <p>
-                            Upload a sample
-                            resume to use
-                            it as a design
-                            template.
-                          </p>
-                        </div>
+                        <p>
+                          Upload a sample resume to use it as a
+                          design template.
+                        </p>
                       </div>
-                    ) : (
-                      templates.map(
-                        (template) => (
-                          <div
-                            key={template.id}
-                            className={`rb-template-item ${String(
-                              selectedTemplateId
-                            ) ===
-                                String(
-                                  template.id
-                                )
-                                ? "selected"
-                                : ""
-                              }`}
-                          >
-                            <button
-                              type="button"
-                              className="rb-template-select"
-                              onClick={() =>
-                                setSelectedTemplateId(
-                                  String(
-                                    template.id
-                                  )
-                                )
-                              }
-                            >
-                              <div className="rb-template-icon">
-                                <FileText
-                                  size={17}
-                                />
-                              </div>
+                    </div>
+                  ) : (
+                    <div className="rb-template-grid">
+                      <div className="rb-template-group">
+                        <span className="rb-template-group-title">
+                          ATS-friendly templates
+                        </span>
 
-                              <div className="rb-template-info">
-                                <strong>
-                                  {
-                                    template.name
-                                  }
-                                </strong>
+                        <span className="rb-template-group-count">
+                          {builtinTemplates.length}
+                        </span>
+                      </div>
 
-                                <span>
-                                  {template.file_type
-                                    ?.toUpperCase() ||
-                                    "TEMPLATE"}
-                                </span>
-                              </div>
+                      {builtinTemplates.map(
+                        renderTemplateCard
+                      )}
 
-                              {String(
-                                selectedTemplateId
-                              ) ===
-                                String(
-                                  template.id
-                                ) && (
-                                  <CheckCircle2
-                                    size={17}
-                                    className="rb-template-check"
-                                  />
-                                )}
-                            </button>
+                      {uploadedTemplates.length > 0 && (
+                        <>
+                          <div className="rb-template-group">
+                            <span className="rb-template-group-title">
+                              Your uploaded templates
+                            </span>
 
-                            <button
-                              type="button"
-                              className="rb-template-delete"
-                              title="Delete template"
-                              onClick={() =>
-                                handleDeleteTemplate(
-                                  template.id
-                                )
-                              }
-                            >
-                              <Trash2
-                                size={15}
-                              />
-                            </button>
+                            <span className="rb-template-group-count">
+                              {uploadedTemplates.length}
+                            </span>
                           </div>
-                        )
-                      )
-                    )}
-                  </div>
+
+                          {uploadedTemplates.map(
+                            renderTemplateCard
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
 
                   <div className="rb-upload">
                     <div className="rb-upload-icon">
@@ -2975,9 +3058,8 @@ function ResumeBuilder() {
                         type="file"
                         accept=".pdf,.docx"
                         onChange={(e) =>
-                          setTemplateFile(
-                            e.target.files?.[0] ||
-                            null
+                          handleTemplateFileChange(
+                            e.target.files?.[0] || null
                           )
                         }
                       />
@@ -3010,6 +3092,27 @@ function ResumeBuilder() {
                         )}
                       </button>
                     </div>
+
+                    {templateFile && (
+                      <div className="rb-template-file-preview">
+                        <div className="rb-template-file-preview-label">
+                          Preview before uploading
+                        </div>
+
+                        {templateFileUrl ? (
+                          <iframe
+                            title="Selected template file"
+                            src={`${templateFileUrl}#toolbar=0&view=FitH`}
+                          />
+                        ) : (
+                          <p>
+                            {templateFile.name} — DOCX files cannot be
+                            previewed in the browser. The layout is
+                            analysed as soon as you press Upload.
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -4424,6 +4527,18 @@ function ResumeBuilder() {
           </main>
         </div>
       </div>
+
+      {previewTemplate && (
+        <TemplatePreviewModal
+          template={previewTemplate}
+          isSelected={
+            String(selectedTemplateId) ===
+            String(previewTemplate.id)
+          }
+          onSelect={handleSelectTemplate}
+          onClose={() => setPreviewTemplate(null)}
+        />
+      )}
     </div>
   );
 }

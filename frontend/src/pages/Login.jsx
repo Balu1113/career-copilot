@@ -2,6 +2,10 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
 import api from "../services/api";
+import {
+  ONBOARDING_COMPLETED_KEY,
+  ONBOARDING_OPEN_EVENT,
+} from "../components/OnboardingTour";
 import "./Login.css";
 
 
@@ -59,6 +63,10 @@ function Login() {
 
       window.alert("Login successful!");
       navigate("/dashboard");
+
+      if (localStorage.getItem(ONBOARDING_COMPLETED_KEY) !== "1") {
+        window.dispatchEvent(new Event(ONBOARDING_OPEN_EVENT));
+      }
 
     } catch (error) {
       const message =

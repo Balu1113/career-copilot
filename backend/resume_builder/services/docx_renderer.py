@@ -134,14 +134,23 @@ def _configure_document(document, template_data):
     section.page_height = Inches(height_inches)
 
     # ---------------------------------------------------------------
-    # Naman CV is a compact one-page A4 resume.
-    # These margins keep the generated DOCX visually close.
+    # Default margins keep generated resumes close to a compact
+    # one-page layout. Templates can override them through
+    # template_data["page"].
     # ---------------------------------------------------------------
 
-    section.top_margin = Inches(0.55)
-    section.bottom_margin = Inches(0.55)
-    section.left_margin = Inches(0.65)
-    section.right_margin = Inches(0.65)
+    section.top_margin = Inches(
+        float(page_data.get("margin_top", 0.55))
+    )
+    section.bottom_margin = Inches(
+        float(page_data.get("margin_bottom", 0.55))
+    )
+    section.left_margin = Inches(
+        float(page_data.get("margin_left", 0.65))
+    )
+    section.right_margin = Inches(
+        float(page_data.get("margin_right", 0.65))
+    )
 
     body_font = _get_template_font(
         template_data,

@@ -2,7 +2,9 @@ import {
   Brain,
   BarChart3,
   BriefcaseBusiness,
+  CircleHelp,
   FileText,
+  History,
   LogOut,
   Map,
   MessageSquare,
@@ -11,6 +13,8 @@ import {
 } from "lucide-react";
 
 import { useNavigate, useLocation } from "react-router-dom";
+
+import { ONBOARDING_OPEN_EVENT } from "./OnboardingTour";
 
 function Sidebar() {
   const navigate = useNavigate();
@@ -21,6 +25,10 @@ function Sidebar() {
     localStorage.removeItem("refresh_token");
 
     window.location.href = "/login";
+  };
+
+  const openGuide = () => {
+    window.dispatchEvent(new Event(ONBOARDING_OPEN_EVENT));
   };
 
   const isActive = (path) => {
@@ -41,6 +49,11 @@ function Sidebar() {
         >
           <BarChart3 size={18} />
           Dashboard
+        </button>
+
+        <button className="nav-item" onClick={openGuide}>
+          <CircleHelp size={18} />
+          Getting Started
         </button>
 
         <button
@@ -107,10 +120,10 @@ function Sidebar() {
           className={`nav-item ${
             isActive("/interview-prep") ? "active" : ""
           }`}
-          onClick={() => navigate("/interview-history")}
+          onClick={() => navigate("/interview-prep")}
         >
           <MessageSquare size={18} />
-          Interview History
+          Interview Prep
         </button>
 
         <button
@@ -119,8 +132,8 @@ function Sidebar() {
           }`}
           onClick={() => navigate("/interview-history")}
         >
-          <MessageSquare size={18} />
-          Interview Prep
+          <History size={18} />
+          Interview History
         </button>
 
         <button
