@@ -1,0 +1,6 @@
+{
+  "provider": "gemini",
+  "model": "models/gemini-embedding-001",
+  "dimension": 768,
+  "normalized": true
+}
