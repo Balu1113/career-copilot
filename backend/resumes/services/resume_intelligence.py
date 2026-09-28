@@ -254,7 +254,7 @@ Return ONLY valid JSON matching the schema.
         schema=ResumeIntelligence,
     )
 
-    data = result.model_dump()
+    data = result if isinstance(result, dict) else result.model_dump()
 
     # Final application-level enforcement.
     # The LLM cannot override this field.

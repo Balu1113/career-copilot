@@ -212,7 +212,8 @@ class GenerateResumeIntelligenceView(APIView):
 
             ResumeIntelligence.objects.update_or_create(
                 resume=resume,
-                defaults=intelligence.model_dump(),
+                defaults=intelligence if isinstance(intelligence, dict)
+                else intelligence.model_dump(),
             )
 
             return Response(
