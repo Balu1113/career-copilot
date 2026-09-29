@@ -117,6 +117,20 @@ def _resume_education_fallback(resume):
         return []
 
 
+def _matching_source_projects(source_projects, selected_projects):
+    selected_names = {
+        str(project.get("name", "")).strip().casefold()
+        for project in selected_projects
+        if isinstance(project, dict) and project.get("name")
+    }
+    return [
+        project
+        for project in source_projects
+        if isinstance(project, dict)
+        and str(project.get("name", "")).strip().casefold() in selected_names
+    ]
+
+
 class ResumeTemplateListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -515,6 +529,7 @@ class ResumeContentGenerationView(APIView):
                             [],
                         ),
                         job_description=job_description,
+                        allow_new_projects=False,
                     )
                 )
 
@@ -547,9 +562,9 @@ class ResumeContentGenerationView(APIView):
                         "experience",
                         [],
                     ),
-                    "projects": optimization.get(
-                        "projects",
-                        [],
+                    "projects": _matching_source_projects(
+                        parsed_resume.get("projects", []),
+                        optimization.get("projects", []),
                     ),
                     "education": parsed_resume.get(
                         "education",

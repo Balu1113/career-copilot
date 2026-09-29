@@ -37,12 +37,9 @@ STRICT RULES:
 3. PROJECTS:
    - Keep existing projects relevant to the JD.
    - Remove clearly unrelated projects.
-   - You may create ONE additional project that is
-     directly relevant to the JD.
-   - A newly generated project must not be presented
-     as employment experience.
-   - Keep the generated project concise and technically
-     relevant to the JD.
+     - Only create a project when the project instructions
+         explicitly allow it.
+     - Never rewrite facts in an existing project.
 
 4. DO NOT modify:
    - name
@@ -104,12 +101,7 @@ TASK:
 
 4. Remove clearly unrelated skills.
 
-5. Keep projects relevant to the JD.
-
-6. Remove clearly unrelated projects.
-
-7. If useful, create ONE additional project that
-   demonstrates the technologies requested by the JD.
+5. {project_instructions}
 
 8. Do not modify or create professional employment
    experience.
@@ -194,16 +186,27 @@ def generate_resume_optimization(
     skills,
     projects,
     job_description,
+    allow_new_projects=True,
 ):
     if not job_description.strip():
         raise ValueError(
             "Job description is required."
         )
 
+    project_instructions = (
+        "Keep relevant projects and remove unrelated ones. Do not invent projects."
+        if not allow_new_projects
+        else (
+            "Keep relevant projects and remove unrelated ones. If useful, create "
+            "one concise, clearly relevant project."
+        )
+    )
+
     prompt = RESUME_OPTIMIZATION_USER_PROMPT.format(
         job_description=job_description,
         skills=skills,
         projects=projects,
+        project_instructions=project_instructions,
     )
 
     return generate_structured_output(
