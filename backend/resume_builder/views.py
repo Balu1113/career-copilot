@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from resumes.models import Resume
+from resumes.models import Resume, ResumeIntelligence
 
 from .models import GeneratedResume, ResumeProfile, ResumeTemplate
 from .serializers import (
@@ -25,6 +25,7 @@ from .services.resume_generator import (
     modify_resume_content,
 )
 from .services.resume_parser import (
+    complete_resume_content,
     parse_resume_text,
 )
 
@@ -106,6 +107,13 @@ def _generated_resume_download_url(generated_resume):
         "generated-resume-download",
         kwargs={"resume_id": generated_resume.id},
     ).removeprefix("/api/")
+
+
+def _resume_education_fallback(resume):
+    try:
+        return resume.intelligence.education
+    except ResumeIntelligence.DoesNotExist:
+        return []
 
 
 class ResumeTemplateListCreateView(APIView):
@@ -1157,6 +1165,17 @@ class UploadedResumeEditForkView(APIView):
         )
 
         if existing_fork:
+            content = complete_resume_content(
+                existing_fork.content,
+                resume.extracted_text,
+                _resume_education_fallback(resume),
+            )
+            if content != existing_fork.content:
+                existing_fork.content = content
+                existing_fork.save(
+                    update_fields=["content", "updated_at"]
+                )
+
             return Response(
                 {
                     "id": existing_fork.id,
@@ -1166,7 +1185,7 @@ class UploadedResumeEditForkView(APIView):
                         request,
                         resume,
                     ),
-                    "content": existing_fork.content,
+                    "content": content,
                     "output_file": _generated_resume_download_url(
                         existing_fork
                     ),
@@ -1190,8 +1209,10 @@ class UploadedResumeEditForkView(APIView):
             )
 
         try:
-            content = parse_resume_text(
-                resume.extracted_text
+            content = complete_resume_content(
+                parse_resume_text(resume.extracted_text),
+                resume.extracted_text,
+                _resume_education_fallback(resume),
             )
 
             generated_resume = (

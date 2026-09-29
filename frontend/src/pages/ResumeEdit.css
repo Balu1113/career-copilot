@@ -80,6 +80,25 @@
   text-align: center;
 }
 
+.ed-source-preview-docx-render {
+  max-height: 620px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 9px;
+  background: #eef0f2;
+}
+
+.ed-source-preview-docx-render .docx-wrapper {
+  padding: 8px !important;
+  background: #eef0f2 !important;
+}
+
+.ed-source-preview-docx-render .docx {
+  margin: 0 auto 12px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.14);
+}
+
 .ed-source-preview-docx p {
   margin: 0 0 10px;
 }

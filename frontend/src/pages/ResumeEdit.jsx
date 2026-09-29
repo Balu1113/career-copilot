@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   AlertCircle,
@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import api from "../services/api";
+import { renderAsync } from "docx-preview";
 
 import "./ResumeEdit.css";
 
@@ -192,6 +193,8 @@ function ResumeEdit() {
   const [title, setTitle] = useState("");
   const [sourceFile, setSourceFile] = useState("");
   const [sourcePreviewUrl, setSourcePreviewUrl] = useState("");
+  const [sourcePreviewError, setSourcePreviewError] = useState("");
+  const docxPreviewRef = useRef(null);
   const [loadedResumeKey, setLoadedResumeKey] = useState("");
   const loading = loadedResumeKey !== `${type}:${id}`;
 
@@ -316,6 +319,54 @@ function ResumeEdit() {
       }
     };
   }, [type, id]);
+
+  useEffect(() => {
+    if (
+      type !== "uploaded" ||
+      !sourceFile.toLowerCase().endsWith(".docx") ||
+      !sourcePreviewUrl ||
+      !docxPreviewRef.current
+    ) {
+      return undefined;
+    }
+
+    const container = docxPreviewRef.current;
+    let cancelled = false;
+    container.replaceChildren();
+    setSourcePreviewError("");
+
+    const renderSourceDocument = async () => {
+      try {
+        const response = await fetch(sourcePreviewUrl);
+        if (!response.ok) {
+          throw new Error("Unable to read the uploaded DOCX file.");
+        }
+
+        const documentData = await response.arrayBuffer();
+        if (cancelled) return;
+
+        await renderAsync(documentData, container, container, {
+          breakPages: true,
+          ignoreLastRenderedPageBreak: false,
+          useBase64URL: true,
+        });
+
+        if (cancelled) container.replaceChildren();
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to render source DOCX preview", error);
+          setSourcePreviewError("Unable to render the original Word document.");
+        }
+      }
+    };
+
+    renderSourceDocument();
+
+    return () => {
+      cancelled = true;
+      container.replaceChildren();
+    };
+  }, [sourceFile, sourcePreviewUrl, type]);
 
   const handleSave = async () => {
     if (!resumeId) return;
@@ -823,19 +874,21 @@ function ResumeEdit() {
               <div className="ed-source-preview-docx">
                 <p>Loading the original resume preview...</p>
               </div>
+            ) : sourceFile.toLowerCase().includes(".docx") && sourcePreviewUrl ? (
+              <div
+                className="ed-source-preview-docx-render"
+                ref={docxPreviewRef}
+                aria-label="Original uploaded Word resume"
+              >
+                {sourcePreviewError && <p>{sourcePreviewError}</p>}
+              </div>
+            ) : sourceFile.toLowerCase().includes(".docx") ? (
+              <div className="ed-source-preview-docx">
+                <p>Loading the original Word resume preview...</p>
+              </div>
             ) : (
               <div className="ed-source-preview-docx">
-                <p>
-                  The original DOCX file cannot be rendered directly in the browser.
-                </p>
-                <a
-                  href={sourcePreviewUrl || undefined}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-disabled={!sourcePreviewUrl}
-                >
-                  Download the original resume
-                </a>
+                <p>Preview is unavailable for this file type.</p>
               </div>
             )}
           </div>
@@ -956,10 +1009,18 @@ function ResumeEdit() {
               <h3>Education</h3>
               {content.education.map((item, index) => (
                 <div className="ed-preview-item" key={index}>
-                  <strong>{item.degree || "Degree"}</strong>
+                  <div className="ed-preview-item-heading">
+                    <strong>{item.degree || "Degree"}</strong>
+                    <span>
+                      {[item.start_date, item.end_date]
+                        .filter(Boolean)
+                        .join(" - ")}
+                    </span>
+                  </div>
                   <div className="ed-preview-muted">
                     {item.institution || "Institution"}
                     {item.location ? ` | ${item.location}` : ""}
+                    {item.grade ? ` | ${item.grade}` : ""}
                   </div>
                 </div>
               ))}

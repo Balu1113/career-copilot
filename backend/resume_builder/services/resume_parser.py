@@ -1,3 +1,5 @@
+import re
+
 from agents.services.structured_llm import (
     generate_structured_output,
 )
@@ -47,7 +49,87 @@ Return:
 - publications
 
 Do not invent or modify information.
+
+Prioritize extracting the person's name and every education entry. Do not
+leave these fields empty when the resume text explicitly contains them.
 """
+
+
+def _fallback_name(resume_text):
+    ignored_headings = {
+        "curriculum vitae",
+        "resume",
+        "cv",
+        "profile",
+        "contact",
+        "education",
+        "projects",
+        "technical skills",
+        "skills",
+        "certifications",
+        "experience",
+    }
+
+    for line in resume_text.splitlines()[:6]:
+        candidate = re.sub(r"^[\W_]+|[\W_]+$", "", line).strip()
+        normalized = candidate.casefold()
+        if (
+            normalized in ignored_headings
+            or "@" in candidate
+            or ":" in candidate
+            or re.search(r"\d|https?://|www\.", candidate, re.IGNORECASE)
+            or len(candidate.split()) not in range(2, 6)
+            or not re.fullmatch(r"[^\W\d_][\w .'-]+", candidate)
+        ):
+            continue
+        return candidate
+
+    return ""
+
+
+def complete_resume_content(content, resume_text, education_fallback=None):
+    """Fill parser omissions from explicit source text or saved extraction."""
+    content = dict(content or {})
+    personal = dict(content.get("personal") or {})
+
+    email_match = re.search(
+        r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}",
+        resume_text or "",
+    )
+    phone_match = re.search(
+        r"(?<!\w)(?:\+?\d[\d\s().-]{8,}\d)(?!\w)",
+        resume_text or "",
+    )
+    phone = phone_match.group(0).strip() if phone_match else ""
+    if phone and sum(character.isdigit() for character in phone) < 10:
+        phone = ""
+
+    fallbacks = {
+        "name": _fallback_name(resume_text or ""),
+        "email": email_match.group(0) if email_match else "",
+        "phone": phone,
+    }
+    for field, value in fallbacks.items():
+        if not personal.get(field) and value:
+            personal[field] = value
+    content["personal"] = personal
+
+    if not content.get("education") and education_fallback:
+        content["education"] = [
+            {
+                "degree": item.get("degree", ""),
+                "institution": item.get("institution", ""),
+                "location": item.get("location", ""),
+                "start_date": item.get("start_date", ""),
+                "end_date": item.get("end_date", item.get("dates", "")),
+                "grade": item.get("grade", ""),
+            }
+            for item in education_fallback
+            if isinstance(item, dict)
+            and (item.get("degree") or item.get("institution"))
+        ]
+
+    return content
 
 
 def parse_resume_text(resume_text):
