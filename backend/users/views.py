@@ -3,11 +3,14 @@ from datetime import timedelta
 
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import default_token_generator
+from django.contrib.contenttypes.models import ContentType
 from django.core.mail import send_mail
+from django.db import transaction
 from django.utils.encoding import force_bytes, force_str
 from django.utils import timezone
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
@@ -18,6 +21,9 @@ from rest_framework_simplejwt.token_blacklist.models import (
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from .serializers import (
+    AdminLoginSerializer,
+    AdminRegisterSerializer,
+    AdminUserSerializer,
     ChangePasswordSerializer,
     LoginSerializer,
     PasswordResetConfirmSerializer,
@@ -48,6 +54,15 @@ def _token_pair_for_user(user):
 def _blacklist_user_refresh_tokens(user):
     for outstanding_token in OutstandingToken.objects.filter(user=user):
         BlacklistedToken.objects.get_or_create(token=outstanding_token)
+
+
+class IsSuperuser(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and request.user.is_superuser
+        )
 
 
 class RegisterView(generics.CreateAPIView):
@@ -89,6 +104,73 @@ class LoginView(APIView):
                 "user": UserSerializer(user).data,
             }
         )
+
+
+class AdminLoginView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = AdminLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(_token_pair_for_user(serializer.validated_data["user"]))
+
+
+class AdminRegisterView(APIView):
+    def get_permissions(self):
+        if User.objects.filter(is_superuser=True).exists():
+            return [IsSuperuser()]
+        return [permissions.AllowAny()]
+
+    def post(self, request):
+        serializer = AdminRegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            ContentType.objects.select_for_update().get(
+                app_label="auth",
+                model="user",
+            )
+            is_first_superuser = not User.objects.filter(
+                is_superuser=True
+            ).exists()
+            if not is_first_superuser and not (
+                request.user.is_authenticated
+                and request.user.is_superuser
+            ):
+                raise PermissionDenied(
+                    "Only a superuser can register admin accounts."
+                )
+
+            user = serializer.save(is_superuser=is_first_superuser)
+
+        return Response(
+            _token_pair_for_user(user),
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class AdminUserListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAdminUser]
+    serializer_class = AdminUserSerializer
+    queryset = User.objects.order_by("id")
+
+
+class AdminUserDeleteView(generics.DestroyAPIView):
+    permission_classes = [permissions.IsAdminUser]
+    serializer_class = AdminUserSerializer
+    queryset = User.objects.all()
+    lookup_url_kwarg = "user_id"
+
+    def perform_destroy(self, instance):
+        if instance == self.request.user:
+            raise PermissionDenied("You cannot delete your own account.")
+
+        if instance.is_staff and not self.request.user.is_superuser:
+            raise PermissionDenied(
+                "Only a superuser can delete an admin account."
+            )
+
+        _blacklist_user_refresh_tokens(instance)
+        instance.delete()
 
 
 class RefreshView(APIView):

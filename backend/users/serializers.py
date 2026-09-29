@@ -32,11 +32,49 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 
+class AdminRegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, min_length=8)
+    email = serializers.EmailField(required=True)
+
+    class Meta:
+        model = User
+        fields = ["username", "email", "password"]
+
+    def validate_email(self, value):
+        value = value.strip()
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError(
+                "An account with this email already exists."
+            )
+        return value
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
+    def create(self, validated_data):
+        is_superuser = validated_data.pop("is_superuser", False)
+        return User.objects.create_user(
+            username=validated_data["username"],
+            email=validated_data["email"],
+            password=validated_data["password"],
+            is_staff=True,
+            is_superuser=is_superuser,
+        )
+
+
 class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
         fields = ["id", "username", "email"]
+
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "username", "email", "is_active", "is_staff", "date_joined"]
+        read_only_fields = fields
 
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
@@ -89,6 +127,14 @@ class LoginSerializer(serializers.Serializer):
             )
 
         attrs["user"] = user
+        return attrs
+
+
+class AdminLoginSerializer(LoginSerializer):
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if not attrs["user"].is_staff:
+            raise serializers.ValidationError("Invalid admin credentials.")
         return attrs
 
 
