@@ -24,6 +24,7 @@ from .services.resume_generator import (
     generate_resume_summary,
     modify_resume_content,
 )
+from .services.template_analyzer import analyze_template
 from .services.resume_parser import (
     complete_resume_content,
     parse_resume_text,
@@ -350,16 +351,6 @@ class ResumeContentGenerationView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if not template_id:
-            return Response(
-                {
-                    "detail": (
-                        "template_id is required."
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         if not job_description:
             return Response(
                 {
@@ -374,18 +365,20 @@ class ResumeContentGenerationView(APIView):
         # Validate template ownership
         # -------------------------------------------------
 
-        try:
-            template = ResumeTemplate.objects.get(
-                id=template_id,
-                user=request.user,
-            )
-        except ResumeTemplate.DoesNotExist:
-            return Response(
-                {
-                    "detail": "Template not found."
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        template = None
+        if template_id:
+            try:
+                template = ResumeTemplate.objects.get(
+                    id=template_id,
+                    user=request.user,
+                )
+            except ResumeTemplate.DoesNotExist:
+                return Response(
+                    {
+                        "detail": "Template not found."
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
 
         resume = None
         generated_source = None
@@ -628,6 +621,40 @@ class ResumeContentGenerationView(APIView):
             # CREATE GENERATED RESUME
             # =================================================
 
+            if template:
+                template_data = template.template_data or {}
+            elif resume:
+                template_data = analyze_template(resume.file.path)
+            elif (
+                generated_source
+                and generated_source.template_id
+            ):
+                template = generated_source.template
+                template_data = template.template_data or {}
+            elif (
+                generated_source
+                and generated_source.source_resume
+            ):
+                template_data = analyze_template(
+                    generated_source.source_resume.file.path
+                )
+            else:
+                ensure_builtin_templates(request.user)
+                template = (
+                    ResumeTemplate.objects
+                    .filter(
+                        user=request.user,
+                        is_builtin=True,
+                    )
+                    .order_by("id")
+                    .first()
+                )
+                if not template:
+                    raise ValueError(
+                        "No resume template is available."
+                    )
+                template_data = template.template_data or {}
+
             source_title = None
 
             if resume:
@@ -674,10 +701,6 @@ class ResumeContentGenerationView(APIView):
 
             output_path = (
                 output_dir / output_filename
-            )
-
-            template_data = (
-                template.template_data or {}
             )
 
             render_resume_to_docx(
@@ -733,7 +756,9 @@ class ResumeContentGenerationView(APIView):
                         )
                     ),
                     "title": generated_resume.title,
-                    "template_id": template.id,
+                    "template_id": (
+                        template.id if template else None
+                    ),
                     "content": final_content,
                     "output_file": _generated_resume_download_url(
                         generated_resume

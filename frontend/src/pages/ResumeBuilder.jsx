@@ -282,6 +282,15 @@ function ResumeBuilder() {
     (template) => !template.is_builtin
   );
 
+  const selectedResumeOption = resumes.find(
+    (resume) => resume.value === selectedResumeId
+  );
+
+  const selectedTemplate = templates.find(
+    (template) =>
+      String(template.id) === String(selectedTemplateId)
+  );
+
   const handleSelectTemplate = (template) => {
     setSelectedTemplateId(String(template.id));
     setPreviewTemplate(null);
@@ -462,11 +471,6 @@ function ResumeBuilder() {
               setAppliedOptimizationIndexes([]);
             }
 
-            // Use the first saved template automatically. The user can
-            // still change it before generating the tailored resume.
-            if (templateData.length > 0) {
-              setSelectedTemplateId(String(templateData[0].id));
-            }
           }
         }
       )
@@ -638,13 +642,6 @@ function ResumeBuilder() {
     setError("");
     setSuccess("");
 
-    if (!selectedTemplateId) {
-      setError(
-        "Please select or upload a resume template."
-      );
-      return;
-    }
-
     if (!jobDescription.trim()) {
       setError(
         "Please enter the job description."
@@ -667,11 +664,12 @@ function ResumeBuilder() {
 
       const payload = {
         source_type: sourceType,
-        template_id: Number(
-          selectedTemplateId
-        ),
         job_description: jobDescription,
       };
+
+      if (selectedTemplateId) {
+        payload.template_id = Number(selectedTemplateId);
+      }
 
       if (sourceType === "existing_resume") {
         const [resumeType, resumeId] =
@@ -2975,6 +2973,30 @@ function ResumeBuilder() {
                     title="Choose resume template"
                     description="Click a template to preview it first, then choose it. Every built-in option is single-column and ATS friendly."
                   />
+
+                  <div className="rb-template-fallback">
+                    <span>
+                      {selectedTemplate
+                        ? `${selectedTemplate.name} selected`
+                        : sourceType === "new_resume"
+                          ? "Default ATS template"
+                          : !selectedResumeOption
+                            ? "Select an existing resume"
+                            : selectedResumeOption.type === "uploaded"
+                              ? "Uploaded resume layout"
+                              : "Selected resume's saved template"}
+                    </span>
+
+                    {selectedTemplateId && (
+                      <button
+                        type="button"
+                        className="rb-button rb-button-outline"
+                        onClick={() => setSelectedTemplateId("")}
+                      >
+                        Use resume layout
+                      </button>
+                    )}
+                  </div>
 
                   {templates.length === 0 ? (
                     <div className="rb-empty-template">
