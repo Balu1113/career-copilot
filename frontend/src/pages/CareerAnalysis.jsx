@@ -168,7 +168,7 @@ function CareerAnalysis() {
       const [resumeType, selectedResumeId] = resumeId.split(":");
 
       const response = await fetch(
-        "http://127.0.0.1:8000/api/career/analyze-stream/",
+        api.getUri({ url: "/career/analyze-stream/" }),
         {
           method: "POST",
           headers: {
@@ -323,38 +323,19 @@ function CareerAnalysis() {
     setOptimizationError("");
     setOptimization(null);
 
-    const token = localStorage.getItem("access_token");
-
     const [resumeType, selectedResumeId] = String(resumeId).split(":");
 
-    const response = await fetch(
-      "http://127.0.0.1:8000/api/career/optimize-resume/",
+    const response = await api.post(
+      "/career/optimize-resume/",
       {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          resume_id: Number(selectedResumeId),
-          resume_type: resumeType || "uploaded",
-          job_description: jobDescription,
-          job_requirements: result?.job_requirements || {},
-        }),
+        resume_id: Number(selectedResumeId),
+        resume_type: resumeType || "uploaded",
+        job_description: jobDescription,
+        job_requirements: result?.job_requirements || {},
       },
     );
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        data.error ||
-          data.detail ||
-          "Unable to optimize resume.",
-      );
-    }
-
-    setOptimization(data);
+    setOptimization(response.data);
   } catch (err) {
     setOptimizationError(
       err.message || "Unable to optimize resume.",
