@@ -16,6 +16,45 @@ class Resume(models.Model):
 
     extracted_text = models.TextField(blank=True)
 
+    # Structured resume JSON (personalInfo/workExperience/... schema).
+    processed_data = models.JSONField(null=True, blank=True)
+
+    # Editable builder content (personal/summary/skills/experience/...)
+    # saved when this uploaded resume is edited in the Resume Editor.
+    builder_content = models.JSONField(null=True, blank=True, default=None)
+
+    # "md" for source text parsed from an upload, "json" for structured data.
+    content_type = models.CharField(max_length=10, default="md")
+
+    # Snapshot of the source text captured at upload time.
+    original_markdown = models.TextField(blank=True, default="")
+
+    cover_letter = models.TextField(blank=True, default="")
+
+    outreach_message = models.TextField(blank=True, default="")
+
+    interview_prep = models.JSONField(null=True, blank=True)
+
+    # First resume uploaded by a user becomes the master resume.
+    is_master = models.BooleanField(default=False)
+
+    # Set on tailored resumes: the resume and job they came from.
+    source_resume = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="tailored_resumes",
+    )
+
+    job = models.ForeignKey(
+        "jobs.JobPosting",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="tailored_resumes",
+    )
+
     processing_status = models.CharField(
     max_length=20,
     choices=[
@@ -109,3 +148,53 @@ class ResumeProcessingJob(models.Model):
 
     class Meta:
         ordering = ["created_at"]
+
+
+class ResumePreview(models.Model):
+    """Registered improve/preview result with claim/lease replay semantics."""
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="resume_previews",
+    )
+
+    source_resume = models.ForeignKey(
+        Resume,
+        on_delete=models.CASCADE,
+        related_name="previews",
+    )
+
+    job = models.ForeignKey(
+        "jobs.JobPosting",
+        on_delete=models.CASCADE,
+        related_name="resume_previews",
+    )
+
+    payload_hash = models.CharField(max_length=64)
+    source_hash = models.CharField(max_length=64)
+    job_hash = models.CharField(max_length=64)
+    prompt_id = models.CharField(max_length=64, blank=True, default="")
+
+    improvements = models.JSONField(default=list)
+
+    # Populated once the preview is confirmed (durable replay payload).
+    response = models.JSONField(null=True, blank=True)
+
+    # Claim/lease state.
+    token = models.CharField(max_length=64, blank=True, default="")
+    claimed_at = models.DateTimeField(null=True, blank=True)
+
+    expires_at = models.DateTimeField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["source_resume", "job", "expires_at"]),
+        ]
+
+    def __str__(self):
+        return f"Preview {self.pk} - resume {self.source_resume_id}"

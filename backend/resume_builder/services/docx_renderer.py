@@ -3,7 +3,11 @@ from pathlib import Path
 from django.conf import settings
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Inches, Pt
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Inches, Pt, RGBColor
+
+from resume_builder.schemas import ordered_resume_sections
 
 
 DEFAULT_FONT = "Times New Roman"
@@ -21,11 +25,19 @@ def _get_template_font(template_data, section, fallback=DEFAULT_FONT):
     exist on Windows. In that case, use Times New Roman as the
     closest safe DOCX fallback.
     """
-    font = (
-        template_data
-        .get(section, {})
-        .get("font")
-    )
+    section_data = template_data.get(section, {})
+    font = section_data.get("font") if isinstance(section_data, dict) else None
+    if not font:
+        typography = template_data.get("typography", {})
+        font_data = template_data.get("font", {})
+        font = (
+            typography.get("font")
+            or (
+                font_data.get("family")
+                if isinstance(font_data, dict)
+                else None
+            )
+        )
 
     if not font:
         return fallback
@@ -48,16 +60,56 @@ def _get_template_font(template_data, section, fallback=DEFAULT_FONT):
     return font
 
 
+def _get_template_accent(template_data):
+    preview = template_data.get("preview", {})
+    value = preview.get("accent", "1F2937")
+    value = str(value).lstrip("#")
+    if len(value) != 6:
+        return "1F2937"
+    try:
+        RGBColor.from_string(value)
+    except ValueError:
+        return "1F2937"
+    return value.upper()
+
+
+def _set_run_color(run, color):
+    run_properties = run._r.get_or_add_rPr()
+    color_element = run_properties.find(qn("w:color"))
+    if color_element is None:
+        color_element = OxmlElement("w:color")
+        run_properties.append(color_element)
+    color_element.set(qn("w:val"), color)
+
+
+def _set_paragraph_border(paragraph, edge, color):
+    paragraph_properties = paragraph._p.get_or_add_pPr()
+    borders = paragraph_properties.find(qn("w:pBdr"))
+    if borders is None:
+        borders = OxmlElement("w:pBdr")
+        paragraph_properties.append(borders)
+
+    border = OxmlElement(f"w:{edge}")
+    border.set(qn("w:val"), "single")
+    border.set(qn("w:sz"), "12" if edge == "left" else "6")
+    border.set(qn("w:space"), "4")
+    border.set(qn("w:color"), f"{color}")
+    borders.append(border)
+
+
 def _get_body_size(template_data):
-    return float(
+    size = float(
         template_data
         .get("typography", {})
         .get("body_size", 12)
     )
+    if template_data.get("one_page_export"):
+        return min(size, 9)
+    return size
 
 
 def _get_header_size(template_data):
-    return float(
+    size = float(
         template_data
         .get("header", {})
         .get(
@@ -67,14 +119,20 @@ def _get_header_size(template_data):
             .get("header_size", 24.8),
         )
     )
+    if template_data.get("one_page_export"):
+        return min(size, 18)
+    return size
 
 
 def _get_heading_size(template_data):
-    return float(
+    size = float(
         template_data
         .get("section_heading", {})
         .get("font_size", 17.2)
     )
+    if template_data.get("one_page_export"):
+        return min(size, 11)
+    return size
 
 
 def _set_run_font(
@@ -139,17 +197,26 @@ def _configure_document(document, template_data):
     # template_data["page"].
     # ---------------------------------------------------------------
 
+    one_page_export = template_data.get("one_page_export", False)
     section.top_margin = Inches(
-        float(page_data.get("margin_top", 0.55))
+        min(float(page_data.get("margin_top", 0.55)), 0.35)
+        if one_page_export
+        else float(page_data.get("margin_top", 0.55))
     )
     section.bottom_margin = Inches(
-        float(page_data.get("margin_bottom", 0.55))
+        min(float(page_data.get("margin_bottom", 0.55)), 0.35)
+        if one_page_export
+        else float(page_data.get("margin_bottom", 0.55))
     )
     section.left_margin = Inches(
-        float(page_data.get("margin_left", 0.65))
+        min(float(page_data.get("margin_left", 0.65)), 0.45)
+        if one_page_export
+        else float(page_data.get("margin_left", 0.65))
     )
     section.right_margin = Inches(
-        float(page_data.get("margin_right", 0.65))
+        min(float(page_data.get("margin_right", 0.65)), 0.45)
+        if one_page_export
+        else float(page_data.get("margin_right", 0.65))
     )
 
     body_font = _get_template_font(
@@ -169,7 +236,9 @@ def _configure_document(document, template_data):
     normal.font.size = Pt(body_size)
 
     normal.paragraph_format.space_before = Pt(0)
-    normal.paragraph_format.space_after = Pt(2)
+    normal.paragraph_format.space_after = Pt(
+        0.5 if one_page_export else 2
+    )
     normal.paragraph_format.line_spacing = 1.0
 
     # ---------------------------------------------------------------
@@ -212,6 +281,19 @@ def _add_header(
     body_size = _get_body_size(
         template_data
     )
+    accent_hex = _get_template_accent(template_data)
+    preview = template_data.get("preview", {})
+    header_style = preview.get("header_style", "")
+    alignment_name = (
+        template_data.get("header", {}).get("alignment", "center").lower()
+    )
+    alignment = (
+        WD_ALIGN_PARAGRAPH.LEFT
+        if alignment_name == "left"
+        else WD_ALIGN_PARAGRAPH.RIGHT
+        if alignment_name == "right"
+        else WD_ALIGN_PARAGRAPH.CENTER
+    )
 
     section = document.sections[0]
 
@@ -230,7 +312,7 @@ def _add_header(
     if name:
         paragraph = document.add_paragraph()
 
-        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        paragraph.alignment = alignment
 
         _set_paragraph_spacing(
             paragraph,
@@ -247,8 +329,24 @@ def _add_header(
             run,
             font_name=header_font,
             font_size=header_size,
-            bold=False,
+            bold=header_style in {"accent", "band", "boxed"},
         )
+        _set_run_color(
+            run,
+            "FFFFFF" if header_style == "band" else accent_hex,
+        )
+
+        if header_style == "band":
+            paragraph_properties = paragraph._p.get_or_add_pPr()
+            shading = OxmlElement("w:shd")
+            shading.set(qn("w:fill"), accent_hex)
+            paragraph_properties.append(shading)
+        elif header_style in {"accent", "boxed"}:
+            _set_paragraph_border(
+                paragraph,
+                "left" if header_style == "accent" else "top",
+                accent_hex,
+            )
 
     # ---------------------------------------------------------------
     # CONTACT INFORMATION
@@ -275,7 +373,7 @@ def _add_header(
     if contact_parts:
         paragraph = document.add_paragraph()
 
-        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        paragraph.alignment = alignment
 
         _set_paragraph_spacing(
             paragraph,
@@ -318,6 +416,10 @@ def _add_section_heading(
     heading_size = _get_heading_size(
         template_data
     )
+    accent_hex = _get_template_accent(template_data)
+    heading_style = template_data.get("preview", {}).get(
+        "heading_style", ""
+    )
 
     alignment_name = (
         heading_data
@@ -356,6 +458,15 @@ def _add_section_heading(
         font_size=heading_size,
         bold=True,
     )
+    _set_run_color(run, accent_hex)
+    if heading_style == "underline":
+        run.underline = True
+    elif heading_style in {"bar", "rule"}:
+        _set_paragraph_border(
+            paragraph,
+            "left" if heading_style == "bar" else "bottom",
+            accent_hex,
+        )
 
     return paragraph
 
@@ -1085,47 +1196,31 @@ def render_resume_to_docx(
         template_data,
     )
 
-    _add_summary(
-        document,
-        content.get("summary", ""),
-        template_data,
-    )
-
-    _add_experience(
-        document,
-        content.get("experience", []),
-        template_data,
-    )
-
-    _add_projects(
-        document,
-        content.get("projects", []),
-        template_data,
-    )
-
-    _add_education(
-        document,
-        content.get("education", []),
-        template_data,
-    )
-
-    _add_publications(
-        document,
-        content.get("publications", []),
-        template_data,
-    )
-
-    _add_certifications(
-        document,
-        content.get("certifications", []),
-        template_data,
-    )
-
-    _add_skills(
-        document,
-        content.get("skills", {}),
-        template_data,
-    )
+    section_renderers = {
+        "summary": lambda: _add_summary(
+            document, content.get("summary", ""), template_data
+        ),
+        "experience": lambda: _add_experience(
+            document, content.get("experience", []), template_data
+        ),
+        "projects": lambda: _add_projects(
+            document, content.get("projects", []), template_data
+        ),
+        "education": lambda: _add_education(
+            document, content.get("education", []), template_data
+        ),
+        "publications": lambda: _add_publications(
+            document, content.get("publications", []), template_data
+        ),
+        "certifications": lambda: _add_certifications(
+            document, content.get("certifications", []), template_data
+        ),
+        "skills": lambda: _add_skills(
+            document, content.get("skills", {}), template_data
+        ),
+    }
+    for section in ordered_resume_sections(content, template_data):
+        section_renderers[section]()
 
     if output_path is None:
         output_dir = (

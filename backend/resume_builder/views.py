@@ -25,10 +25,21 @@ from .services.resume_generator import (
     modify_resume_content,
 )
 from .services.template_analyzer import analyze_template
+from .services.resume_naming import build_generated_resume_title
 from .services.resume_parser import (
     complete_resume_content,
     parse_resume_text,
 )
+from .schemas import ordered_resume_sections
+
+
+def _generated_resume_template_data(generated_resume):
+    snapshot = generated_resume.template_data_snapshot
+    if isinstance(snapshot, dict) and snapshot:
+        return dict(snapshot)
+    if generated_resume.template:
+        return generated_resume.template.template_data or {}
+    return {}
 
 
 def _render_generated_resume_docx(
@@ -69,15 +80,9 @@ def _render_generated_resume_docx(
 
     output_path = output_dir / output_filename
 
-    template_data = {}
-
-    if generated_resume.template:
-        template_data = (
-            generated_resume
-            .template
-            .template_data
-            or {}
-        )
+    # Reproduce the layout resolved when this resume was generated instead
+    # of re-analyzing the source file on every render.
+    template_data = _generated_resume_template_data(generated_resume)
 
     if is_uploaded_modifier:
         render_resume_to_pdf(
@@ -279,7 +284,10 @@ class GeneratedResumeListCreateView(APIView):
     def get(self, request):
         generated_resumes = (
             GeneratedResume.objects
-            .filter(user=request.user)
+            .filter(
+                user=request.user,
+                mode=GeneratedResume.MODE_BUILDER,
+            )
             .select_related(
                 "template",
                 "source_resume",
@@ -345,6 +353,17 @@ class ResumeContentGenerationView(APIView):
             )
             .strip()
         )
+
+
+        use_source_layout = bool(request.data.get("use_source_layout"))
+
+        job_title = str(
+            request.data.get("job_title") or ""
+        ).strip()
+
+        company = str(
+            request.data.get("company") or ""
+        ).strip()
 
         # -------------------------------------------------
         # Basic validation
@@ -470,6 +489,18 @@ class ResumeContentGenerationView(APIView):
                         parsed_resume = (
                             parsed_resume.model_dump()
                         )
+
+                    # ---------------------------------------------
+                    # Fill parser omissions (name, contact details,
+                    # education) from the source text or the saved
+                    # intelligence profile before building content.
+                    # ---------------------------------------------
+
+                    parsed_resume = complete_resume_content(
+                        parsed_resume,
+                        resume.extracted_text,
+                        _resume_education_fallback(resume),
+                    )
 
                 else:
 
@@ -670,6 +701,11 @@ class ResumeContentGenerationView(APIView):
                     )
                 template_data = template.template_data or {}
 
+            final_content["section_order"] = ordered_resume_sections(
+                final_content,
+                template_data,
+            )
+
             source_title = None
 
             if resume:
@@ -682,10 +718,11 @@ class ResumeContentGenerationView(APIView):
                     user=request.user,
                     template=template,
                     source_resume=resume,
-                    title=(
-                        f"Generated Resume - {source_title}"
-                        if source_title
-                        else "Generated Resume"
+                    title=build_generated_resume_title(
+                        job_description=job_description,
+                        job_title=job_title,
+                        company=company,
+                        source_title=source_title,
                     ),
                     mode=GeneratedResume.MODE_BUILDER,
                     job_description=job_description,
@@ -693,6 +730,7 @@ class ResumeContentGenerationView(APIView):
                     status=(
                         GeneratedResume.STATUS_GENERATING
                     ),
+                    template_data_snapshot=template_data,
                 )
             )
 
@@ -774,6 +812,7 @@ class ResumeContentGenerationView(APIView):
                     "template_id": (
                         template.id if template else None
                     ),
+                    "template_data": template_data,
                     "content": final_content,
                     "output_file": _generated_resume_download_url(
                         generated_resume
@@ -1169,161 +1208,6 @@ class GeneratedResumeAIEditView(APIView):
             )
 
 
-class UploadedResumeEditForkView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @staticmethod
-    def _source_file_url(request, resume):
-        if not resume.file:
-            return None
-
-        return Path(resume.file.name).name
-
-    def post(self, request, resume_id):
-        try:
-            resume = Resume.objects.get(
-                id=resume_id,
-                user=request.user,
-            )
-        except Resume.DoesNotExist:
-            return Response(
-                {
-                    "detail": "Resume not found."
-                },
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        existing_fork = (
-            GeneratedResume.objects
-            .filter(
-                user=request.user,
-                source_resume=resume,
-                mode=GeneratedResume.MODE_MODIFIER,
-            )
-            .order_by("-created_at")
-            .first()
-        )
-
-        if existing_fork:
-            content = complete_resume_content(
-                existing_fork.content,
-                resume.extracted_text,
-                _resume_education_fallback(resume),
-            )
-            if content != existing_fork.content:
-                existing_fork.content = content
-                existing_fork.save(
-                    update_fields=["content", "updated_at"]
-                )
-
-            return Response(
-                {
-                    "id": existing_fork.id,
-                    "title": existing_fork.title,
-                    "mode": existing_fork.mode,
-                    "source_file": self._source_file_url(
-                        request,
-                        resume,
-                    ),
-                    "content": content,
-                    "output_file": _generated_resume_download_url(
-                        existing_fork
-                    ),
-                    "status": existing_fork.status,
-                    "created_at": (
-                        existing_fork.created_at
-                    ),
-                },
-                status=status.HTTP_200_OK,
-            )
-
-        if not resume.extracted_text.strip():
-            return Response(
-                {
-                    "detail": (
-                        "Resume text has not been "
-                        "extracted yet."
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            content = complete_resume_content(
-                parse_resume_text(resume.extracted_text),
-                resume.extracted_text,
-                _resume_education_fallback(resume),
-            )
-
-            generated_resume = (
-                GeneratedResume.objects.create(
-                    user=request.user,
-                    source_resume=resume,
-                    title=(
-                        resume.title
-                    ),
-                    mode=(
-                        GeneratedResume.MODE_MODIFIER
-                    ),
-                    content=content,
-                    status=(
-                        GeneratedResume
-                        .STATUS_GENERATING
-                    ),
-                )
-            )
-
-            _render_generated_resume_docx(
-                generated_resume,
-                content,
-            )
-
-            generated_resume.status = (
-                GeneratedResume.STATUS_COMPLETED
-            )
-
-            generated_resume.save(
-                update_fields=[
-                    "output_file",
-                    "status",
-                    "error_message",
-                    "updated_at",
-                ]
-            )
-
-            return Response(
-                {
-                    "id": generated_resume.id,
-                    "title": generated_resume.title,
-                    "mode": generated_resume.mode,
-                    "source_file": self._source_file_url(
-                        request,
-                        resume,
-                    ),
-                    "content": generated_resume.content,
-                    "output_file": _generated_resume_download_url(
-                        generated_resume
-                    ),
-                    "status": (
-                        generated_resume.status
-                    ),
-                    "created_at": (
-                        generated_resume.created_at
-                    ),
-                },
-                status=status.HTTP_201_CREATED,
-            )
-        except Exception as exc:
-            return Response(
-                {
-                    "detail": str(exc)
-                },
-                status=(
-                    status.HTTP_500_INTERNAL_SERVER_ERROR
-                ),
-            )
-
-
 class GeneratedResumeDownloadView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1350,10 +1234,61 @@ class GeneratedResumeDownloadView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        download_format = request.query_params.get("export_format")
+        if download_format is not None:
+            download_format = download_format.lower()
+            if download_format not in {"pdf", "word"}:
+                return Response(
+                    {"detail": "format must be either 'pdf' or 'word'."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            output_dir = Path(settings.MEDIA_ROOT) / "generated_resumes"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            suffix = ".pdf" if download_format == "pdf" else ".docx"
+            output_path = output_dir / (
+                f"resume_{generated_resume.id}_download{suffix}"
+            )
+            template_data = _generated_resume_template_data(generated_resume)
+            content = generated_resume.content or {}
+
+            if download_format == "pdf":
+                render_resume_to_pdf(
+                    content=content,
+                    template_data={
+                        **template_data,
+                        "uploaded_layout": bool(
+                            generated_resume.mode
+                            == GeneratedResume.MODE_MODIFIER
+                            and generated_resume.source_resume
+                        ),
+                        "fit_to_page": True,
+                    },
+                    output_path=output_path,
+                )
+            else:
+                render_resume_to_docx(
+                    content=content,
+                    template_data={
+                        **template_data,
+                        "one_page_export": True,
+                    },
+                    output_path=output_path,
+                )
+
+            return FileResponse(
+                output_path.open("rb"),
+                as_attachment=True,
+                filename=f"{generated_resume.title}{suffix}",
+            )
+
         if (
-            generated_resume.mode
-            == GeneratedResume.MODE_MODIFIER
-            and generated_resume.source_resume
+            not generated_resume.output_file
+            or (
+                generated_resume.mode
+                == GeneratedResume.MODE_MODIFIER
+                and generated_resume.source_resume
+            )
         ):
             _render_generated_resume_docx(
                 generated_resume,
@@ -1368,13 +1303,8 @@ class GeneratedResumeDownloadView(APIView):
 
         if not generated_resume.output_file:
             return Response(
-                {
-                    "detail": (
-                        "Generated resume file "
-                        "is not available."
-                    )
-                },
-                status=status.HTTP_404_NOT_FOUND,
+                {"detail": "Generated resume file could not be generated."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
         try:
@@ -1401,12 +1331,28 @@ class GeneratedResumeDownloadView(APIView):
             )
 
         except FileNotFoundError:
-            return Response(
-                {
-                    "detail": (
-                        "Generated resume file "
-                        "was not found."
-                    )
-                },
-                status=status.HTTP_404_NOT_FOUND,
+            _render_generated_resume_docx(
+                generated_resume,
+                generated_resume.content or {},
+            )
+            generated_resume.save(
+                update_fields=["output_file", "updated_at"]
+            )
+            try:
+                file_handle = generated_resume.output_file.open("rb")
+            except FileNotFoundError:
+                return Response(
+                    {"detail": "Generated resume file could not be regenerated."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            suffix = (
+                ".pdf"
+                if generated_resume.output_file.name.lower().endswith(".pdf")
+                else ".docx"
+            )
+            return FileResponse(
+                file_handle,
+                as_attachment=True,
+                filename=f"{generated_resume.title}{suffix}",
             )

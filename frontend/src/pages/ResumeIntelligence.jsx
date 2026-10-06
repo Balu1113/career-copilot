@@ -5,7 +5,6 @@ import {
 } from "lucide-react";
 
 import api from "../services/api";
-import Sidebar from "../components/Sidebar";
 
 import "./ResumeIntelligence.css";
 
@@ -102,173 +101,169 @@ function ResumeIntelligence() {
 };
 
   return (
-    <div className="dashboard-layout">
-      <Sidebar />
+    <main className="dashboard-main resume-intelligence-page">
 
-      <main className="dashboard-main resume-intelligence-page">
+      <div className="resume-intelligence-header">
+        <div className="resume-intelligence-title">
+          <Brain size={27} />
 
-        <div className="resume-intelligence-header">
-          <div className="resume-intelligence-title">
-            <Brain size={27} />
+          <div>
+            <h1>Resume Intelligence</h1>
 
-            <div>
-              <h1>Resume Intelligence</h1>
-
-              <p>
-                View the structured information extracted
-                from your resume by the AI system.
-              </p>
-            </div>
+            <p>
+              View the structured information extracted
+              from your resume by the AI system.
+            </p>
           </div>
         </div>
+      </div>
 
 
-        <section className="resume-intelligence-selector">
-  <label>Resume</label>
+      <section className="resume-intelligence-selector">
+<label>Resume</label>
 
-  {loadingResumes ? (
-    <div className="resume-intelligence-loading-inline">
+{loadingResumes ? (
+  <div className="resume-intelligence-loading-inline">
+    <Loader2
+      size={17}
+      className="spinning"
+    />
+    Loading resumes...
+  </div>
+) : (
+  <select
+    value={resumeId}
+    onChange={(event) =>
+      setResumeId(event.target.value)
+    }
+  >
+    {resumes.length === 0 ? (
+      <option value="">
+        No resumes available
+      </option>
+    ) : (
+      resumes.map((resume) => (
+        <option
+          key={resume.id}
+          value={resume.id}
+        >
+          {resume.title}
+        </option>
+      ))
+    )}
+  </select>
+)}
+
+<button
+  type="button"
+  className="generate-intelligence-button"
+  onClick={handleGenerate}
+  disabled={!resumeId || generating}
+>
+  {generating ? (
+    <>
       <Loader2
         size={17}
         className="spinning"
       />
-      Loading resumes...
-    </div>
+      Generating...
+    </>
   ) : (
-    <select
-      value={resumeId}
-      onChange={(event) =>
-        setResumeId(event.target.value)
-      }
-    >
-      {resumes.length === 0 ? (
-        <option value="">
-          No resumes available
-        </option>
-      ) : (
-        resumes.map((resume) => (
-          <option
-            key={resume.id}
-            value={resume.id}
-          >
-            {resume.title}
-          </option>
-        ))
-      )}
-    </select>
+    <>
+      <Brain size={17} />
+      Generate Intelligence
+    </>
   )}
-
-  <button
-    type="button"
-    className="generate-intelligence-button"
-    onClick={handleGenerate}
-    disabled={!resumeId || generating}
-  >
-    {generating ? (
-      <>
-        <Loader2
-          size={17}
-          className="spinning"
-        />
-        Generating...
-      </>
-    ) : (
-      <>
-        <Brain size={17} />
-        Generate Intelligence
-      </>
-    )}
-  </button>
+</button>
 </section>
 
 
-        {error && (
-          <div className="resume-intelligence-error">
-            {error}
-          </div>
-        )}
+      {error && (
+        <div className="resume-intelligence-error">
+          {error}
+        </div>
+      )}
 
 
-        {loadingIntelligence ? (
-          <div className="resume-intelligence-loading">
-            <Loader2
-              size={25}
-              className="spinning"
-            />
+      {loadingIntelligence ? (
+        <div className="resume-intelligence-loading">
+          <Loader2
+            size={25}
+            className="spinning"
+          />
 
-            <p>
-              Loading resume intelligence...
-            </p>
-          </div>
-        ) : intelligence ? (
-          <div className="resume-intelligence-results">
+          <p>
+            Loading resume intelligence...
+          </p>
+        </div>
+      ) : intelligence ? (
+        <div className="resume-intelligence-results">
 
-            {intelligence.professional_summary && (
-              <section className="resume-intelligence-card">
-                <h2>Professional Summary</h2>
+          {intelligence.professional_summary && (
+            <section className="resume-intelligence-card">
+              <h2>Professional Summary</h2>
 
-                <p className="intelligence-summary">
-                  {intelligence.professional_summary}
-                </p>
-              </section>
-            )}
+              <p className="intelligence-summary">
+                {intelligence.professional_summary}
+              </p>
+            </section>
+          )}
 
 
-            <IntelligenceTags
-              title="Skills"
-              items={intelligence.skills}
-            />
+          <IntelligenceTags
+            title="Skills"
+            items={intelligence.skills}
+          />
 
-            <IntelligenceTags
-              title="Programming Languages"
-              items={
-                intelligence.programming_languages
-              }
-            />
+          <IntelligenceTags
+            title="Programming Languages"
+            items={
+              intelligence.programming_languages
+            }
+          />
 
-            <IntelligenceTags
-              title="Frameworks"
-              items={intelligence.frameworks}
-            />
+          <IntelligenceTags
+            title="Frameworks"
+            items={intelligence.frameworks}
+          />
 
-            <IntelligenceTags
-              title="Tools & Technologies"
-              items={
-                intelligence.tools_and_technologies
-              }
-            />
+          <IntelligenceTags
+            title="Tools & Technologies"
+            items={
+              intelligence.tools_and_technologies
+            }
+          />
 
-            <IntelligenceTags
-              title="AI / ML Technologies"
-              items={
-                intelligence.ai_ml_technologies
-              }
-            />
+          <IntelligenceTags
+            title="AI / ML Technologies"
+            items={
+              intelligence.ai_ml_technologies
+            }
+          />
 
-            <IntelligenceProjects
-            projects={intelligence.projects}
-            />
+          <IntelligenceProjects
+          projects={intelligence.projects}
+          />
 
-            <IntelligenceList
-              title="Experience"
-              items={intelligence.experience}
-            />
+          <IntelligenceList
+            title="Experience"
+            items={intelligence.experience}
+          />
 
-            <IntelligenceList
-              title="Education"
-              items={intelligence.education}
-            />
+          <IntelligenceList
+            title="Education"
+            items={intelligence.education}
+          />
 
-            <IntelligenceList
-              title="Certifications"
-              items={intelligence.certifications}
-            />
+          <IntelligenceList
+            title="Certifications"
+            items={intelligence.certifications}
+          />
 
-          </div>
-        ) : null}
+        </div>
+      ) : null}
 
-      </main>
-    </div>
+    </main>
   );
 }
 

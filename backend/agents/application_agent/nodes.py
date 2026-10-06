@@ -53,8 +53,9 @@ def analyze_candidate_fit(state: dict[str, Any]) -> dict[str, Any]:
     """
     Reuse the existing resume/job analysis information.
 
-    The actual detailed resume analysis will be connected to the
-    existing career-analysis services in the next iteration.
+    Intelligence is optional: generated resumes may not have a stored
+    intelligence record, so the workflow proceeds with whatever context
+    is available instead of failing.
     """
 
     job_requirements = state.get("job_requirements") or {}
@@ -63,14 +64,11 @@ def analyze_candidate_fit(state: dict[str, Any]) -> dict[str, Any]:
     if not job_requirements:
         raise ValueError("Job requirements are missing.")
 
-    if not resume_intelligence:
-        raise ValueError("Resume intelligence is missing.")
-
     return {
         "resume_analysis": {
             "status": "ready",
             "job_requirements_available": True,
-            "resume_intelligence_available": True,
+            "resume_intelligence_available": bool(resume_intelligence),
         },
         "current_node": "analyze_candidate_fit",
     }

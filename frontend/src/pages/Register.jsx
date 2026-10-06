@@ -75,7 +75,6 @@ function Register() {
     const validationMessage = validateForm();
     if (validationMessage) {
       setError(validationMessage);
-      window.alert(validationMessage);
       return;
     }
 
@@ -102,7 +101,6 @@ function Register() {
         response.data.refresh
       );
 
-      window.alert("Registration successful! Welcome aboard.");
       navigate("/dashboard");
 
       localStorage.removeItem("onboarding_completed");
@@ -117,7 +115,6 @@ function Register() {
         "Registration failed.";
 
       setError(message);
-      window.alert(message);
     } finally {
       setLoading(false);
     }
@@ -218,8 +215,8 @@ function Register() {
             {loading ? "Creating account..." : "Register"}
           </button>
 
-          <p style={{ textAlign: "center", marginTop: "18px", fontSize: "14px", color: "#64748b" }}>
-            Already have an account? <Link to="/login" style={{ color: "#4f46e5", fontWeight: 500 }}>Login</Link>
+          <p style={{ textAlign: "center", marginTop: "18px", fontSize: "14px", color: "var(--text-muted)" }}>
+            Already have an account? <Link to="/login" style={{ color: "var(--accent-text)", fontWeight: 500 }}>Login</Link>
           </p>
         </form>
       </div>

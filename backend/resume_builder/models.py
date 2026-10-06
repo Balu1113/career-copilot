@@ -144,6 +144,12 @@ class GeneratedResume(models.Model):
         default=MODE_BUILDER,
     )
 
+    # Set on the one wizard-authored resume that acts as the user's
+    # canonical master. Other generated variants stay False.
+    is_master = models.BooleanField(
+        default=False,
+    )
+
     job_description = models.TextField(
         blank=True
     )
@@ -153,6 +159,15 @@ class GeneratedResume(models.Model):
     content = models.JSONField(
         default=dict,
         blank=True,
+    )
+
+    # Resolved template_data used to render this resume. Persisted so
+    # Save/Download reproduce the same layout instead of re-analyzing the
+    # source file on every request.
+    template_data_snapshot = models.JSONField(
+        null=True,
+        blank=True,
+        default=None,
     )
 
     output_file = models.FileField(

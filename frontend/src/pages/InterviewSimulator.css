@@ -2,20 +2,6 @@
    PAGE LAYOUT
 ========================================================= */
 
-.app-layout {
-  display: flex;
-  min-height: 100vh;
-  width: 100%;
-  background: #f7f8fc;
-}
-
-.main-content {
-  flex: 1;
-  min-width: 0;
-  min-height: 100vh;
-  overflow-x: hidden;
-}
-
 .interview-simulator-page {
   width: 100%;
   max-width: 1200px;
@@ -37,9 +23,9 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  border: 1px solid #dfe3eb;
-  background: #ffffff;
-  color: #374151;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-secondary);
   padding: 9px 14px;
   border-radius: 9px;
   font-size: 14px;
@@ -49,8 +35,8 @@
 }
 
 .interview-back-button:hover {
-  background: #f3f4f6;
-  border-color: #cfd4df;
+  background: var(--surface-2);
+  border-color: var(--border-strong);
 }
 
 .interview-title-row {
@@ -63,8 +49,8 @@
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: #eef2ff;
-  color: #4f46e5;
+  background: var(--accent-soft);
+  color: var(--accent-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -75,13 +61,13 @@
   margin: 0;
   font-size: 28px;
   line-height: 1.2;
-  color: #111827;
+  color: var(--text);
   font-weight: 700;
 }
 
 .interview-title-row p {
   margin: 7px 0 0;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
@@ -96,9 +82,9 @@
   gap: 9px;
   padding: 13px 16px;
   margin-bottom: 20px;
-  border: 1px solid #fecaca;
-  background: #fef2f2;
-  color: #b91c1c;
+  border: 1px solid var(--danger-border);
+  background: var(--danger-soft);
+  color: var(--danger-text);
   border-radius: 10px;
   font-size: 14px;
 }
@@ -109,8 +95,8 @@
 ========================================================= */
 
 .interview-setup-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 30px;
   box-shadow: 0 3px 14px rgba(15, 23, 42, 0.04);
@@ -130,20 +116,20 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #4f46e5;
+  color: var(--accent-text);
   margin-bottom: 8px;
 }
 
 .interview-setup-header h2 {
   margin: 0;
-  color: #111827;
+  color: var(--text);
   font-size: 22px;
   line-height: 1.3;
 }
 
 .interview-setup-header p {
   margin: 8px 0 0;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 14px;
   line-height: 1.6;
 }
@@ -152,8 +138,8 @@
   width: 54px;
   height: 54px;
   border-radius: 14px;
-  background: #eef2ff;
-  color: #4f46e5;
+  background: var(--accent-soft);
+  color: var(--accent-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -179,7 +165,7 @@
 .interview-field label {
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: var(--text-secondary);
 }
 
 .interview-field input,
@@ -188,10 +174,10 @@
   box-sizing: border-box;
   min-height: 44px;
   padding: 10px 13px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-strong);
   border-radius: 9px;
-  background: #ffffff;
-  color: #111827;
+  background: var(--surface);
+  color: var(--text);
   font-size: 14px;
   outline: none;
   transition:
@@ -201,7 +187,7 @@
 
 .interview-field input:focus,
 .interview-field select:focus {
-  border-color: #6366f1;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
@@ -219,10 +205,10 @@
 .interview-type-option {
   min-height: 44px;
   padding: 10px 14px;
-  border: 1px solid #dfe3eb;
+  border: 1px solid var(--border-strong);
   border-radius: 9px;
-  background: #ffffff;
-  color: #4b5563;
+  background: var(--surface);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -230,14 +216,14 @@
 }
 
 .interview-type-option:hover {
-  border-color: #a5b4fc;
-  background: #f8f8ff;
+  border-color: var(--accent-border);
+  background: var(--bg-subtle);
 }
 
 .interview-type-option.active {
-  border-color: #4f46e5;
-  background: #eef2ff;
-  color: #4338ca;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 
 
@@ -251,8 +237,8 @@
   min-height: 46px;
   border: none;
   border-radius: 10px;
-  background: #4f46e5;
-  color: #ffffff;
+  background: var(--accent);
+  color: var(--on-accent);
   font-size: 14px;
   font-weight: 600;
   display: flex;
@@ -266,7 +252,7 @@
 }
 
 .start-interview-button:hover:not(:disabled) {
-  background: #4338ca;
+  background: var(--accent-hover);
 }
 
 .start-interview-button:active:not(:disabled) {
@@ -295,8 +281,8 @@
 ========================================================= */
 
 .interview-progress-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 18px 22px;
   box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
@@ -311,27 +297,27 @@
 }
 
 .interview-progress-card span {
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 13px;
   font-weight: 500;
 }
 
 .interview-progress-card strong {
-  color: #111827;
+  color: var(--text);
   font-size: 14px;
 }
 
 .interview-progress-track {
   width: 100%;
   height: 7px;
-  background: #e5e7eb;
+  background: var(--surface-2);
   border-radius: 999px;
   overflow: hidden;
 }
 
 .interview-progress-fill {
   height: 100%;
-  background: #4f46e5;
+  background: var(--accent);
   border-radius: 999px;
   transition: width 0.3s ease;
 }
@@ -342,8 +328,8 @@
 ========================================================= */
 
 .interview-question-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 30px;
   box-shadow: 0 3px 14px rgba(15, 23, 42, 0.04);
@@ -361,21 +347,21 @@
   align-items: center;
   padding: 6px 10px;
   border-radius: 999px;
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--surface-2);
+  color: var(--text-secondary);
   font-size: 12px;
   font-weight: 600;
   text-transform: capitalize;
 }
 
 .question-meta span:first-child {
-  background: #eef2ff;
-  color: #4338ca;
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 
 .interview-question-card > h2 {
   margin: 0;
-  color: #111827;
+  color: var(--text);
   font-size: 21px;
   line-height: 1.5;
   font-weight: 650;
@@ -384,9 +370,9 @@
 .question-reason {
   margin: 15px 0 0;
   padding: 13px 15px;
-  border-left: 3px solid #a5b4fc;
-  background: #f8f8ff;
-  color: #6b7280;
+  border-left: 3px solid var(--accent-border);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -403,7 +389,7 @@
 .answer-section label {
   display: block;
   margin-bottom: 9px;
-  color: #374151;
+  color: var(--text-secondary);
   font-size: 14px;
   font-weight: 600;
 }
@@ -413,12 +399,12 @@
   box-sizing: border-box;
   min-height: 210px;
   padding: 14px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-strong);
   border-radius: 10px;
   resize: vertical;
   outline: none;
-  color: #111827;
-  background: #ffffff;
+  color: var(--text);
+  background: var(--surface);
   font-family: inherit;
   font-size: 14px;
   line-height: 1.6;
@@ -428,12 +414,12 @@
 }
 
 .answer-section textarea:focus {
-  border-color: #6366f1;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .answer-section textarea:disabled {
-  background: #f9fafb;
+  background: var(--bg-subtle);
   cursor: not-allowed;
 }
 
@@ -446,7 +432,7 @@
 }
 
 .answer-footer > span {
-  color: #9ca3af;
+  color: var(--text-faint);
   font-size: 12px;
 }
 
@@ -455,8 +441,8 @@
   padding: 10px 17px;
   border: none;
   border-radius: 9px;
-  background: #4f46e5;
-  color: #ffffff;
+  background: var(--accent);
+  color: var(--on-accent);
   font-size: 13px;
   font-weight: 600;
   display: inline-flex;
@@ -467,7 +453,7 @@
 }
 
 .submit-answer-button:hover:not(:disabled) {
-  background: #4338ca;
+  background: var(--accent-hover);
 }
 
 .submit-answer-button:disabled {
@@ -481,8 +467,8 @@
 ========================================================= */
 
 .interview-evaluation-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 28px;
   box-shadow: 0 3px 14px rgba(15, 23, 42, 0.04);
@@ -494,25 +480,25 @@
   justify-content: space-between;
   gap: 20px;
   padding-bottom: 22px;
-  border-bottom: 1px solid #edf0f4;
+  border-bottom: 1px solid var(--border);
 }
 
 .evaluation-header h2 {
   margin: 0;
-  color: #111827;
+  color: var(--text);
   font-size: 20px;
 }
 
 .evaluation-score {
   font-size: 34px;
   font-weight: 700;
-  color: #4f46e5;
+  color: var(--accent-text);
   white-space: nowrap;
 }
 
 .evaluation-score span {
   font-size: 15px;
-  color: #9ca3af;
+  color: var(--text-faint);
   font-weight: 500;
 }
 
@@ -525,9 +511,9 @@
 
 .evaluation-section {
   padding: 18px;
-  border: 1px solid #edf0f4;
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: #fafbfc;
+  background: var(--bg-subtle);
 }
 
 .evaluation-section h3 {
@@ -535,12 +521,12 @@
   align-items: center;
   gap: 8px;
   margin: 0 0 12px;
-  color: #374151;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
 .evaluation-section h3 svg {
-  color: #4f46e5;
+  color: var(--accent-text);
 }
 
 .evaluation-section ul {
@@ -550,7 +536,7 @@
 
 .evaluation-section li {
   margin-bottom: 8px;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -568,8 +554,8 @@
   max-width: 700px;
   margin: 30px auto;
   padding: 42px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 18px;
   text-align: center;
   box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05);
@@ -580,8 +566,8 @@
   height: 68px;
   margin: 0 auto 18px;
   border-radius: 50%;
-  background: #eef2ff;
-  color: #4f46e5;
+  background: var(--accent-soft);
+  color: var(--accent-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -589,13 +575,13 @@
 
 .interview-completed-card h2 {
   margin: 8px 0 0;
-  color: #111827;
+  color: var(--text);
   font-size: 23px;
 }
 
 .interview-final-score {
   margin: 18px 0 25px;
-  color: #4f46e5;
+  color: var(--accent-text);
   font-size: 58px;
   line-height: 1;
   font-weight: 750;
@@ -603,7 +589,7 @@
 
 .interview-final-score span {
   margin-left: 5px;
-  color: #9ca3af;
+  color: var(--text-faint);
   font-size: 20px;
   font-weight: 500;
 }
@@ -612,18 +598,18 @@
   padding: 16px;
   margin-bottom: 25px;
   border-radius: 10px;
-  background: #f8f9fc;
+  background: var(--bg-subtle);
 }
 
 .final-evaluation-preview h3 {
   margin: 0 0 7px;
-  color: #374151;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
 .final-evaluation-preview p {
   margin: 0;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -651,22 +637,22 @@
 
 .primary-interview-button {
   border: none;
-  background: #4f46e5;
-  color: #ffffff;
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .primary-interview-button:hover {
-  background: #4338ca;
+  background: var(--accent-hover);
 }
 
 .secondary-interview-button {
-  border: 1px solid #dfe3eb;
-  background: #ffffff;
-  color: #374151;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-secondary);
 }
 
 .secondary-interview-button:hover {
-  background: #f8f9fb;
+  background: var(--bg-subtle);
 }
 
 
@@ -681,7 +667,7 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .interview-loading p {

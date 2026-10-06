@@ -1,12 +1,14 @@
 from typing import Any
 
 from agents.application_agent.graph import build_application_agent
+from agents.services.resume_loader import hydrate_resume_payload
 
 
 def run_application_agent(
     *,
     job: dict[str, Any],
     resume: dict[str, Any],
+    user=None,
 ) -> dict[str, Any]:
     """
     Run the application-preparation agent.
@@ -24,6 +26,8 @@ def run_application_agent(
         raise ValueError(
             "The selected job does not contain a job description."
         )
+
+    resume = hydrate_resume_payload(resume, user=user)
 
     initial_state = {
         "job": job,

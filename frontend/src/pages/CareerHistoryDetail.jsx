@@ -9,7 +9,6 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 
 import api from "../services/api";
-import Sidebar from "../components/Sidebar";
 
 import "./CareerAnalysis.css";
 
@@ -50,62 +49,24 @@ function CareerHistoryDetail() {
 
   if (loading) {
     return (
-      <div className="dashboard-layout">
-        <Sidebar />
+      <main className="dashboard-main career-analysis-page">
+        <div className="career-history-loading">
+          <Loader2
+            size={25}
+            className="spinning"
+          />
 
-        <main className="dashboard-main career-analysis-page">
-          <div className="career-history-loading">
-            <Loader2
-              size={25}
-              className="spinning"
-            />
-
-            <p>
-              Loading career analysis...
-            </p>
-          </div>
-        </main>
-      </div>
+          <p>
+            Loading career analysis...
+          </p>
+        </div>
+      </main>
     );
   }
 
 
   if (error) {
     return (
-      <div className="dashboard-layout">
-        <Sidebar />
-
-        <main className="dashboard-main career-analysis-page">
-
-          <button
-            className="career-back-btn"
-            onClick={() =>
-              navigate("/career-history")
-            }
-          >
-            <ArrowLeft size={17} />
-            Back to History
-          </button>
-
-          <div className="career-analysis-error">
-            {error}
-          </div>
-
-        </main>
-      </div>
-    );
-  }
-
-
-  if (!analysis) {
-    return null;
-  }
-
-
-  return (
-    <div className="dashboard-layout">
-      <Sidebar />
-
       <main className="dashboard-main career-analysis-page">
 
         <button
@@ -118,128 +79,154 @@ function CareerHistoryDetail() {
           Back to History
         </button>
 
-
-        <div className="career-history-detail-header">
-
-          <div className="career-title">
-            <Brain size={27} />
-
-            <div>
-              <h1>
-                Career Analysis
-              </h1>
-
-              <p>
-                {analysis.resume_title ||
-                  "Saved analysis"}
-              </p>
-            </div>
-          </div>
-
-
-          <div className="career-history-detail-date">
-            <Calendar size={15} />
-
-            {new Date(
-              analysis.created_at
-            ).toLocaleDateString(
-              undefined,
-              {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              }
-            )}
-          </div>
-
+        <div className="career-analysis-error">
+          {error}
         </div>
-        
-        <button
-          className="career-add-application-btn"
-          onClick={() =>
-            navigate("/applications", {
-              state: {
-                fromCareerAnalysis: true,
-                analysis,
-              },
-            })
-          }
-        >
-          <Briefcase size={17} />
-          Add to Applications
-        </button>
-
-
-        <div className="career-saved-jd">
-          <span>
-            Job Description
-          </span>
-
-          <p>
-            {analysis.job_description}
-          </p>
-        </div>
-
-
-        <section className="career-results">
-
-  {analysis.career_recommendation?.match_summary && (
-    <section className="result-section match-summary-section">
-      <div className="result-section-header">
-        <h2>Match Summary</h2>
-      </div>
-
-      <div className="match-summary">
-        {analysis.career_recommendation.match_summary}
-      </div>
-    </section>
-  )}
-
-  {analysis.resume_intelligence &&
-  Object.keys(analysis.resume_intelligence).length > 0 && (
-    <ResumeIntelligenceCard
-      data={analysis.resume_intelligence}
-    />
-)}
-
-  <ResultObject
-    title="Job Requirements"
-    data={
-      analysis.job_requirements
-    }
-  />
-
-          <ResultObject
-            title="Resume Analysis"
-            data={
-              analysis.resume_analysis
-            }
-          />
-
-          <ResultObject
-            title="Skill Gap Analysis"
-            data={
-              analysis.skill_gap_analysis
-            }
-          />
-
-          <ResultObject
-            title="Career Recommendations"
-            data={
-              analysis.career_recommendation
-            }
-          />
-
-          <ResultObject
-            title="Interview Preparation"
-            data={analysis.interview_preparation}
-            analysis={analysis}
-          />
-
-        </section>
 
       </main>
+    );
+  }
+
+
+  if (!analysis) {
+    return null;
+  }
+
+
+  return (
+    <main className="dashboard-main career-analysis-page">
+
+      <button
+        className="career-back-btn"
+        onClick={() =>
+          navigate("/career-history")
+        }
+      >
+        <ArrowLeft size={17} />
+        Back to History
+      </button>
+
+
+      <div className="career-history-detail-header">
+
+        <div className="career-title">
+          <Brain size={27} />
+
+          <div>
+            <h1>
+              Career Analysis
+            </h1>
+
+            <p>
+              {analysis.resume_title ||
+                "Saved analysis"}
+            </p>
+          </div>
+        </div>
+
+
+        <div className="career-history-detail-date">
+          <Calendar size={15} />
+
+          {new Date(
+            analysis.created_at
+          ).toLocaleDateString(
+            undefined,
+            {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }
+          )}
+        </div>
+
+      </div>
+      
+      <button
+        className="career-add-application-btn"
+        onClick={() =>
+          navigate("/applications", {
+            state: {
+              fromCareerAnalysis: true,
+              analysis,
+            },
+          })
+        }
+      >
+        <Briefcase size={17} />
+        Add to Applications
+      </button>
+
+
+      <div className="career-saved-jd">
+        <span>
+          Job Description
+        </span>
+
+        <p>
+          {analysis.job_description}
+        </p>
+      </div>
+
+
+      <section className="career-results">
+
+{analysis.career_recommendation?.match_summary && (
+  <section className="result-section match-summary-section">
+    <div className="result-section-header">
+      <h2>Match Summary</h2>
     </div>
+
+    <div className="match-summary">
+      {analysis.career_recommendation.match_summary}
+    </div>
+  </section>
+)}
+
+{analysis.resume_intelligence &&
+Object.keys(analysis.resume_intelligence).length > 0 && (
+  <ResumeIntelligenceCard
+    data={analysis.resume_intelligence}
+  />
+)}
+
+<ResultObject
+  title="Job Requirements"
+  data={
+    analysis.job_requirements
+  }
+/>
+
+        <ResultObject
+          title="Resume Analysis"
+          data={
+            analysis.resume_analysis
+          }
+        />
+
+        <ResultObject
+          title="Skill Gap Analysis"
+          data={
+            analysis.skill_gap_analysis
+          }
+        />
+
+        <ResultObject
+          title="Career Recommendations"
+          data={
+            analysis.career_recommendation
+          }
+        />
+
+        <ResultObject
+          title="Interview Preparation"
+          data={analysis.interview_preparation}
+          analysis={analysis}
+        />
+
+      </section>
+
+    </main>
   );
 }
 

@@ -27,6 +27,7 @@ class ApplicationAgentView(APIView):
             result = run_application_agent(
                 job=job,
                 resume=resume,
+                user=request.user,
             )
 
             return Response(

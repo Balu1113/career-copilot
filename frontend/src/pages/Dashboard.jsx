@@ -15,9 +15,6 @@ import {
 import { useNavigate } from "react-router-dom";
 
 import api from "../services/api";
-import Sidebar from "../components/Sidebar";
-
-import "./Dashboard.css";
 
 
 function Dashboard() {
@@ -257,118 +254,114 @@ function Dashboard() {
 
   return (
 
-    <div className="dashboard-layout">
-
-      <Sidebar />
+    <main className="dashboard-main">
 
 
-      <main className="dashboard-main">
+      <header className="dashboard-header">
+
+        <h1>
+          AI Career Copilot
+        </h1>
+
+        <p>
+          Analyze your resume and discover
+          how you match your target role.
+        </p>
+
+      </header>
 
 
-        <header className="dashboard-header">
+      {/* Resume */}
 
-          <h1>
-            AI Career Copilot
-          </h1>
+      <section className="card">
+
+        <h2>
+          Your Resume
+        </h2>
+
+        <p className="card-description">
+          Upload your latest resume to
+          power the AI analysis.
+        </p>
+
+
+        <div className="upload-area">
+
+          <Upload
+            className="upload-icon"
+            size={32}
+          />
+
 
           <p>
-            Analyze your resume and discover
-            how you match your target role.
-          </p>
-
-        </header>
-
-
-        {/* Resume */}
-
-        <section className="card">
-
-          <h2>
-            Your Resume
-          </h2>
-
-          <p className="card-description">
-            Upload your latest resume to
-            power the AI analysis.
+            Select your resume
           </p>
 
 
-          <div className="upload-area">
-
-            <Upload
-              className="upload-icon"
-              size={32}
-            />
+          <p className="file-types">
+            PDF or DOCX
+          </p>
 
 
-            <p>
-              Select your resume
+          <input
+            type="file"
+            accept=".pdf,.docx"
+            onChange={(event) =>
+              setResume(
+                event.target.files[0]
+              )
+            }
+          />
+
+
+          {resume && (
+
+            <p className="file-name">
+
+              <FileText size={16} />
+
+              {" "}
+
+              {resume.name}
+
             </p>
 
+          )}
 
-            <p className="file-types">
-              PDF or DOCX
-            </p>
-
-
-            <input
-              type="file"
-              accept=".pdf,.docx"
-              onChange={(event) =>
-                setResume(
-                  event.target.files[0]
-                )
-              }
-            />
+        </div>
 
 
-            {resume && (
+        <button
+          className="primary-button"
+          onClick={uploadResume}
+          disabled={uploading}
+        >
 
-              <p className="file-name">
+          {uploading ? (
 
-                <FileText size={16} />
+            <>
 
-                {" "}
+              <LoaderCircle
+                size={16}
+                className="spin"
+              />
 
-                {resume.name}
+              Uploading...
 
-              </p>
+            </>
 
-            )}
+          ) : (
 
-          </div>
+            "Upload Resume"
 
+          )}
 
-          <button
-            className="primary-button"
-            onClick={uploadResume}
-            disabled={uploading}
-          >
-
-            {uploading ? (
-
-              <>
-
-                <LoaderCircle
-                  size={16}
-                  className="spin"
-                />
-
-                Uploading...
-
-              </>
-
-            ) : (
-
-              "Upload Resume"
-
-            )}
-
-          </button>
+        </button>
 
 
-          {resumeId && (
+        {resumeId && (
 
+          <div className="upload-success">
             <p className="success-message">
 
               <CheckCircle2
@@ -377,652 +370,666 @@ function Dashboard() {
 
               {" "}
 
-              Resume uploaded successfully.
-
+              Resume uploaded — AI processing has
+              started.
             </p>
 
-          )}
-
-        </section>
-
-
-        {/* Job */}
-
-        <section className="card">
-
-          <h2>
-            Target Job
-          </h2>
-
-
-          <p className="card-description">
-
-            Paste the job description you
-            want to analyze.
-
-          </p>
-
-
-          <textarea
-            className="job-textarea"
-            placeholder="Paste the complete job description here..."
-            value={jobDescription}
-            onChange={(event) =>
-              setJobDescription(
-                event.target.value
-              )
-            }
-          />
-
-
-          <button
-  className="primary-button"
-  onClick={analyzeJob}
->
-  <Sparkles size={16} />
-  Analyze Job
-</button>
-
-        </section>
-
-
-        {/* Quick Actions */}
-
-        <section className="dashboard-section">
-
-          <div className="section-header">
-
-            <div>
-
-              <h2>
-                Quick Actions
-              </h2>
-
-              <p>
-                Jump directly to your career tools.
-              </p>
-
-            </div>
-
-          </div>
-
-
-          <div className="quick-actions">
-
+            <p className="upload-success-hint">
+              Extraction, skills analysis and
+              recommendations usually take under a
+              minute. Track the progress on the
+              Resumes page.
+            </p>
 
             <button
-              className="quick-action-card"
-              onClick={() =>
-                navigate("/resumes")
-              }
+              type="button"
+              className="link-button"
+              onClick={() => navigate("/resumes")}
             >
-
-              <div className="quick-action-icon">
-
-                <FileText size={21} />
-
-              </div>
-
-
-              <div>
-
-                <h3>
-                  Manage Resumes
-                </h3>
-
-                <p>
-                  Upload and manage your resumes.
-                </p>
-
-              </div>
-
-
-              <ArrowRight size={18} />
-
+              View processing status
             </button>
-
-
-            <button
-              className="quick-action-card"
-              onClick={() =>
-                navigate("/interview-prep")
-              }
-            >
-
-              <div className="quick-action-icon">
-
-                <MessageSquare
-                  size={21}
-                />
-
-              </div>
-
-
-              <div>
-
-                <h3>
-                  Interview Prep
-                </h3>
-
-                <p>
-                  Generate personalized interview questions.
-                </p>
-
-              </div>
-
-
-              <ArrowRight size={18} />
-
-            </button>
-
-
-            <button
-              className="quick-action-card"
-              onClick={() =>
-                navigate("/applications")
-              }
-            >
-
-              <div className="quick-action-icon">
-
-                <Briefcase
-                  size={21}
-                />
-
-              </div>
-
-
-              <div>
-
-                <h3>
-                  Applications
-                </h3>
-
-                <p>
-                  Track your job applications.
-                </p>
-
-              </div>
-
-
-              <ArrowRight size={18} />
-
-            </button>
-
           </div>
-
-        </section>
-
-
-        {/* Application Overview */}
-
-        <section className="dashboard-section">
-
-          <div className="section-header">
-
-            <div>
-
-              <h2>
-                Application Overview
-              </h2>
-
-              <p>
-                Your current job search activity.
-              </p>
-
-            </div>
-
-
-            <button
-              className="view-all-btn"
-              onClick={() =>
-                navigate("/applications")
-              }
-            >
-
-              View All
-
-              <ArrowRight size={16} />
-
-            </button>
-
-          </div>
-
-
-          <div className="dashboard-application-stats">
-
-            <div className="dashboard-stat">
-
-              <span>
-                Total Applications
-              </span>
-
-              <strong>
-                {applicationStats.total}
-              </strong>
-
-            </div>
-
-
-            <div className="dashboard-stat">
-
-              <span>
-                Applied
-              </span>
-
-              <strong>
-                {applicationStats.applied}
-              </strong>
-
-            </div>
-
-
-            <div className="dashboard-stat">
-
-              <span>
-                Interviews
-              </span>
-
-              <strong>
-                {applicationStats.interviews}
-              </strong>
-
-            </div>
-
-
-            <div className="dashboard-stat">
-
-              <span>
-                Offers
-              </span>
-
-              <strong>
-                {applicationStats.offers}
-              </strong>
-
-            </div>
-
-          </div>
-
-        </section>
-
-
-        {/* Career Analysis Overview */}
-
-        <section className="dashboard-section">
-
-          <div className="section-header">
-
-            <div>
-
-              <h2>
-                Career Analysis Overview
-              </h2>
-
-              <p>
-                Your recent AI-powered career analysis activity.
-              </p>
-
-            </div>
-
-
-            <button
-              className="view-all-btn"
-              onClick={() =>
-                navigate("/career-history")
-              }
-            >
-
-              View History
-
-              <ArrowRight size={16} />
-
-            </button>
-
-          </div>
-
-
-          {loadingCareerDashboard ? (
-
-            <div className="dashboard-empty-state">
-
-              Loading career analysis...
-
-            </div>
-
-          ) : !careerDashboard ? (
-
-            <div className="dashboard-empty-state">
-
-              <BarChart3 size={30} />
-
-              <h3>
-                No career analysis data
-              </h3>
-
-              <p>
-                Run a career analysis to see your
-                career insights here.
-              </p>
-
-            </div>
-
-          ) : (
-
-            <>
-
-              <div className="dashboard-application-stats">
-
-
-                <div className="dashboard-stat">
-
-                  <span>
-                    Total Analyses
-                  </span>
-
-                  <strong>
-                    {
-                      careerDashboard.total_analyses ||
-                      0
-                    }
-                  </strong>
-
-                </div>
-
-
-                <div className="dashboard-stat">
-
-                  <span>
-                    Latest Required Skills
-                  </span>
-
-                  <strong>
-                    {
-                      careerDashboard
-                        .recent_analyses?.[0]
-                        ?.required_skill_count ||
-                      0
-                    }
-                  </strong>
-
-                </div>
-
-
-                <div className="dashboard-stat">
-
-                  <span>
-                    Latest Matching Skills
-                  </span>
-
-                  <strong>
-                    {
-                      careerDashboard
-                        .recent_analyses?.[0]
-                        ?.matching_skill_count ||
-                      0
-                    }
-                  </strong>
-
-                </div>
-
-
-                <div className="dashboard-stat">
-
-                  <span>
-                    Latest Skill Gaps
-                  </span>
-
-                  <strong>
-                    {
-                      careerDashboard
-                        .recent_analyses?.[0]
-                        ?.missing_skill_count ||
-                      0
-                    }
-                  </strong>
-
-                </div>
-
-              </div>
-
-
-              {
-                careerDashboard
-                  .recent_analyses
-                  ?.length > 0 && (
-
-                <div className="recent-applications">
-
-                  {
-                    careerDashboard
-                      .recent_analyses
-                      .map(
-                        (analysis) => (
-
-                          <div
-                            className="recent-application"
-                            key={analysis.id}
-                          >
-
-                            <div className="recent-application-icon">
-
-                              <Target size={18} />
-
-                            </div>
-
-
-                            <div className="recent-application-info">
-
-                              <h3>
-
-                                {
-                                  analysis.resume_title ||
-                                  "Career Analysis"
-                                }
-
-                              </h3>
-
-
-                              <p>
-
-                                Matching:{" "}
-
-                                {
-                                  analysis.matching_skill_count
-                                }
-
-                                {" · "}
-
-                                Missing:{" "}
-
-                                {
-                                  analysis.missing_skill_count
-                                }
-
-                              </p>
-
-                            </div>
-
-
-                            <button
-                              className="view-all-btn"
-                              onClick={() =>
-                                navigate(
-                                  `/career-history/${analysis.id}`
-                                )
-                              }
-                            >
-
-                              View
-
-                              <ArrowRight
-                                size={15}
-                              />
-
-                            </button>
-
-                          </div>
-
-                        )
-                      )
-                  }
-
-                </div>
-
-              )}
-
-            </>
-
-          )}
-
-        </section>
-
-
-        {error && (
-
-          <p className="error-message">
-
-            {error}
-
-          </p>
 
         )}
 
+      </section>
 
 
-        {/* Recent Applications */}
+      {/* Job */}
 
-        <section className="dashboard-section">
+      <section className="card">
 
-          <div className="section-header">
+        <h2>
+          Target Job
+        </h2>
+
+
+        <p className="card-description">
+
+          Paste the job description you
+          want to analyze.
+
+        </p>
+
+
+        <textarea
+          className="job-textarea"
+          placeholder="Paste the complete job description here..."
+          value={jobDescription}
+          onChange={(event) =>
+            setJobDescription(
+              event.target.value
+            )
+          }
+        />
+
+
+        <button
+className="primary-button"
+onClick={analyzeJob}
+>
+<Sparkles size={16} />
+Analyze Job
+</button>
+
+      </section>
+
+
+      {/* Quick Actions */}
+
+      <section className="dashboard-section">
+
+        <div className="section-header">
+
+          <div>
+
+            <h2>
+              Quick Actions
+            </h2>
+
+            <p>
+              Jump directly to your career tools.
+            </p>
+
+          </div>
+
+        </div>
+
+
+        <div className="quick-actions">
+
+
+          <button
+            className="quick-action-card"
+            onClick={() =>
+              navigate("/resumes")
+            }
+          >
+
+            <div className="quick-action-icon">
+
+              <FileText size={21} />
+
+            </div>
+
 
             <div>
 
-              <h2>
-                Recent Applications
-              </h2>
+              <h3>
+                Manage Resumes
+              </h3>
 
               <p>
-                Your latest tracked opportunities.
+                Upload and manage your resumes.
               </p>
 
             </div>
 
 
+            <ArrowRight size={18} />
+
+          </button>
+
+
+          <button
+            className="quick-action-card"
+            onClick={() =>
+              navigate("/interview-prep")
+            }
+          >
+
+            <div className="quick-action-icon">
+
+              <MessageSquare
+                size={21}
+              />
+
+            </div>
+
+
+            <div>
+
+              <h3>
+                Interview Prep
+              </h3>
+
+              <p>
+                Generate personalized interview questions.
+              </p>
+
+            </div>
+
+
+            <ArrowRight size={18} />
+
+          </button>
+
+
+          <button
+            className="quick-action-card"
+            onClick={() =>
+              navigate("/applications")
+            }
+          >
+
+            <div className="quick-action-icon">
+
+              <Briefcase
+                size={21}
+              />
+
+            </div>
+
+
+            <div>
+
+              <h3>
+                Applications
+              </h3>
+
+              <p>
+                Track your job applications.
+              </p>
+
+            </div>
+
+
+            <ArrowRight size={18} />
+
+          </button>
+
+        </div>
+
+      </section>
+
+
+      {/* Application Overview */}
+
+      <section className="dashboard-section">
+
+        <div className="section-header">
+
+          <div>
+
+            <h2>
+              Application Overview
+            </h2>
+
+            <p>
+              Your current job search activity.
+            </p>
+
+          </div>
+
+
+          <button
+            className="view-all-btn"
+            onClick={() =>
+              navigate("/applications")
+            }
+          >
+
+            View All
+
+            <ArrowRight size={16} />
+
+          </button>
+
+        </div>
+
+
+        <div className="dashboard-application-stats">
+
+          <div className="dashboard-stat">
+
+            <span>
+              Total Applications
+            </span>
+
+            <strong>
+              {applicationStats.total}
+            </strong>
+
+          </div>
+
+
+          <div className="dashboard-stat">
+
+            <span>
+              Applied
+            </span>
+
+            <strong>
+              {applicationStats.applied}
+            </strong>
+
+          </div>
+
+
+          <div className="dashboard-stat">
+
+            <span>
+              Interviews
+            </span>
+
+            <strong>
+              {applicationStats.interviews}
+            </strong>
+
+          </div>
+
+
+          <div className="dashboard-stat">
+
+            <span>
+              Offers
+            </span>
+
+            <strong>
+              {applicationStats.offers}
+            </strong>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      {/* Career Analysis Overview */}
+
+      <section className="dashboard-section">
+
+        <div className="section-header">
+
+          <div>
+
+            <h2>
+              Career Analysis Overview
+            </h2>
+
+            <p>
+              Your recent AI-powered career analysis activity.
+            </p>
+
+          </div>
+
+
+          <button
+            className="view-all-btn"
+            onClick={() =>
+              navigate("/career-history")
+            }
+          >
+
+            View History
+
+            <ArrowRight size={16} />
+
+          </button>
+
+        </div>
+
+
+        {loadingCareerDashboard ? (
+
+          <div className="dashboard-empty-state">
+
+            Loading career analysis...
+
+          </div>
+
+        ) : !careerDashboard ? (
+
+          <div className="dashboard-empty-state">
+
+            <BarChart3 size={30} />
+
+            <h3>
+              No career analysis data
+            </h3>
+
+            <p>
+              Run a career analysis to see your
+              career insights here.
+            </p>
+
+          </div>
+
+        ) : (
+
+          <>
+
+            <div className="dashboard-application-stats">
+
+
+              <div className="dashboard-stat">
+
+                <span>
+                  Total Analyses
+                </span>
+
+                <strong>
+                  {
+                    careerDashboard.total_analyses ||
+                    0
+                  }
+                </strong>
+
+              </div>
+
+
+              <div className="dashboard-stat">
+
+                <span>
+                  Latest Required Skills
+                </span>
+
+                <strong>
+                  {
+                    careerDashboard
+                      .recent_analyses?.[0]
+                      ?.required_skill_count ||
+                    0
+                  }
+                </strong>
+
+              </div>
+
+
+              <div className="dashboard-stat">
+
+                <span>
+                  Latest Matching Skills
+                </span>
+
+                <strong>
+                  {
+                    careerDashboard
+                      .recent_analyses?.[0]
+                      ?.matching_skill_count ||
+                    0
+                  }
+                </strong>
+
+              </div>
+
+
+              <div className="dashboard-stat">
+
+                <span>
+                  Latest Skill Gaps
+                </span>
+
+                <strong>
+                  {
+                    careerDashboard
+                      .recent_analyses?.[0]
+                      ?.missing_skill_count ||
+                    0
+                  }
+                </strong>
+
+              </div>
+
+            </div>
+
+
+            {
+              careerDashboard
+                .recent_analyses
+                ?.length > 0 && (
+
+              <div className="recent-applications">
+
+                {
+                  careerDashboard
+                    .recent_analyses
+                    .map(
+                      (analysis) => (
+
+                        <div
+                          className="recent-application"
+                          key={analysis.id}
+                        >
+
+                          <div className="recent-application-icon">
+
+                            <Target size={18} />
+
+                          </div>
+
+
+                          <div className="recent-application-info">
+
+                            <h3>
+
+                              {
+                                analysis.resume_title ||
+                                "Career Analysis"
+                              }
+
+                            </h3>
+
+
+                            <p>
+
+                              Matching:{" "}
+
+                              {
+                                analysis.matching_skill_count
+                              }
+
+                              {" · "}
+
+                              Missing:{" "}
+
+                              {
+                                analysis.missing_skill_count
+                              }
+
+                            </p>
+
+                          </div>
+
+
+                          <button
+                            className="view-all-btn"
+                            onClick={() =>
+                              navigate(
+                                `/career-history/${analysis.id}`
+                              )
+                            }
+                          >
+
+                            View
+
+                            <ArrowRight
+                              size={15}
+                            />
+
+                          </button>
+
+                        </div>
+
+                      )
+                    )
+                }
+
+              </div>
+
+            )}
+
+          </>
+
+        )}
+
+      </section>
+
+
+      {error && (
+
+        <p className="error-message">
+
+          {error}
+
+        </p>
+
+      )}
+
+
+
+      {/* Recent Applications */}
+
+      <section className="dashboard-section">
+
+        <div className="section-header">
+
+          <div>
+
+            <h2>
+              Recent Applications
+            </h2>
+
+            <p>
+              Your latest tracked opportunities.
+            </p>
+
+          </div>
+
+
+          <button
+            className="view-all-btn"
+            onClick={() =>
+              navigate("/applications")
+            }
+          >
+
+            View All
+
+            <ArrowRight size={16} />
+
+          </button>
+
+        </div>
+
+
+        {loadingApplications ? (
+
+          <div className="dashboard-empty-state">
+
+            Loading applications...
+
+          </div>
+
+        ) : applications.length === 0 ? (
+
+          <div className="dashboard-empty-state">
+
+            <Briefcase size={30} />
+
+            <h3>
+              No applications yet
+            </h3>
+
+            <p>
+              Start tracking your job applications from the
+              Applications page.
+            </p>
+
+
             <button
-              className="view-all-btn"
+              className="dashboard-primary-btn"
               onClick={() =>
                 navigate("/applications")
               }
             >
 
-              View All
+              <Plus size={17} />
 
-              <ArrowRight size={16} />
+              Add Application
 
             </button>
 
           </div>
 
+        ) : (
 
-          {loadingApplications ? (
+          <div className="recent-applications">
 
-            <div className="dashboard-empty-state">
+            {
+              applications
+                .slice(0, 5)
+                .map(
+                  (application) => (
 
-              Loading applications...
+                    <div
+                      className="recent-application"
+                      key={application.id}
+                    >
 
-            </div>
+                      <div className="recent-application-icon">
 
-          ) : applications.length === 0 ? (
-
-            <div className="dashboard-empty-state">
-
-              <Briefcase size={30} />
-
-              <h3>
-                No applications yet
-              </h3>
-
-              <p>
-                Start tracking your job applications from the
-                Applications page.
-              </p>
-
-
-              <button
-                className="dashboard-primary-btn"
-                onClick={() =>
-                  navigate("/applications")
-                }
-              >
-
-                <Plus size={17} />
-
-                Add Application
-
-              </button>
-
-            </div>
-
-          ) : (
-
-            <div className="recent-applications">
-
-              {
-                applications
-                  .slice(0, 5)
-                  .map(
-                    (application) => (
-
-                      <div
-                        className="recent-application"
-                        key={application.id}
-                      >
-
-                        <div className="recent-application-icon">
-
-                          <Briefcase
-                            size={18}
-                          />
-
-                        </div>
-
-
-                        <div className="recent-application-info">
-
-                          <h3>
-                            {application.job_title}
-                          </h3>
-
-                          <p>
-                            {application.company}
-                          </p>
-
-                        </div>
-
-
-                        <span
-                          className={`dashboard-status status-${application.status}`}
-                        >
-                          {application.status}
-                        </span>
+                        <Briefcase
+                          size={18}
+                        />
 
                       </div>
 
-                    )
+
+                      <div className="recent-application-info">
+
+                        <h3>
+                          {application.job_title}
+                        </h3>
+
+                        <p>
+                          {application.company}
+                        </p>
+
+                      </div>
+
+
+                      <span
+                        className={`dashboard-status status-${application.status}`}
+                      >
+                        {application.status}
+                      </span>
+
+                    </div>
+
                   )
-              }
+                )
+            }
 
-            </div>
+          </div>
 
-          )}
+        )}
 
-        </section>
+      </section>
 
 
-      </main>
-
-    </div>
+    </main>
 
   );
 

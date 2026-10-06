@@ -27,16 +27,12 @@ function Login() {
     const trimmedEmail = email.trim();
 
     if (!trimmedEmail) {
-      const message = "Email is required.";
-      setError(message);
-      window.alert(message);
+      setError("Email is required.");
       return;
     }
 
     if (!password) {
-      const message = "Password is required.";
-      setError(message);
-      window.alert(message);
+      setError("Password is required.");
       return;
     }
 
@@ -76,7 +72,6 @@ function Login() {
         "Login failed.";
 
       setError(message);
-      window.alert(message);
     } finally {
       setLoading(false);
     }
@@ -138,12 +133,12 @@ function Login() {
             {loading ? "Logging in..." : "Login"}
           </button>
 
-          <p style={{ textAlign: "center", marginTop: "18px", fontSize: "14px", color: "#64748b" }}>
-            Don&apos;t have an account? <Link to="/register" style={{ color: "#4f46e5", fontWeight: 500 }}>Register</Link>
+          <p style={{ textAlign: "center", marginTop: "18px", fontSize: "14px", color: "var(--text-muted)" }}>
+            Don&apos;t have an account? <Link to="/register" style={{ color: "var(--accent-text)", fontWeight: 500 }}>Register</Link>
           </p>
 
-          <p style={{ textAlign: "center", marginTop: "8px", fontSize: "14px", color: "#64748b" }}>
-            <Link to="/forgot-password" style={{ color: "#4f46e5", fontWeight: 500 }}>Forgot password?</Link>
+          <p style={{ textAlign: "center", marginTop: "8px", fontSize: "14px", color: "var(--text-muted)" }}>
+            <Link to="/forgot-password" style={{ color: "var(--accent-text)", fontWeight: 500 }}>Forgot password?</Link>
           </p>
         </form>
       </div>

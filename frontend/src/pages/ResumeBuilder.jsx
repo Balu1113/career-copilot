@@ -21,6 +21,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Eye,
+  Maximize2,
+  Minimize2,
   WandSparkles,
 } from "lucide-react";
 
@@ -218,6 +220,12 @@ function ResumeBuilder() {
   const incomingJobDescription =
     location.state?.jobDescription || "";
 
+  const incomingJobTitle =
+    location.state?.jobTitle || "";
+
+  const incomingCompany =
+    location.state?.company || "";
+
   const incomingOptimization =
     location.state?.optimization || null;
 
@@ -243,6 +251,11 @@ function ResumeBuilder() {
   const [jobDescription, setJobDescription] =
     useState("");
 
+  const [jobTitle, setJobTitle] = useState("");
+
+  const [companyName, setCompanyName] =
+    useState("");
+
   const [optimization, setOptimization] =
     useState(incomingOptimization);
 
@@ -251,6 +264,9 @@ function ResumeBuilder() {
 
   const [resumeContent, setResumeContent] =
     useState(emptyResumeContent);
+
+  const [generatedTemplateData, setGeneratedTemplateData] =
+    useState(null);
 
   const [generatedResumeId, setGeneratedResumeId] =
     useState(null);
@@ -266,6 +282,7 @@ function ResumeBuilder() {
   const [success, setSuccess] = useState("");
 
   const [showEditor, setShowEditor] = useState(false);
+  const [previewMaximized, setPreviewMaximized] = useState(false);
   const [previewTemplate, setPreviewTemplate] =
     useState(null);
 
@@ -273,6 +290,18 @@ function ResumeBuilder() {
     useState(null);
 
   const templateUrlRef = useRef(null);
+
+  useEffect(() => {
+    if (!previewMaximized) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setPreviewMaximized(false);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [previewMaximized]);
 
   const builtinTemplates = templates.filter(
     (template) => template.is_builtin
@@ -466,6 +495,14 @@ function ResumeBuilder() {
               setJobDescription(incomingJobDescription);
             }
 
+            if (incomingJobTitle) {
+              setJobTitle(incomingJobTitle);
+            }
+
+            if (incomingCompany) {
+              setCompanyName(incomingCompany);
+            }
+
             if (incomingOptimization) {
               setOptimization(incomingOptimization);
               setAppliedOptimizationIndexes([]);
@@ -493,6 +530,8 @@ function ResumeBuilder() {
     incomingResumeId,
     incomingResumeType,
     incomingJobDescription,
+    incomingJobTitle,
+    incomingCompany,
     incomingOptimization,
   ]);
 
@@ -665,6 +704,8 @@ function ResumeBuilder() {
       const payload = {
         source_type: sourceType,
         job_description: jobDescription,
+        job_title: jobTitle.trim(),
+        company: companyName.trim(),
       };
 
       if (selectedTemplateId) {
@@ -678,6 +719,10 @@ function ResumeBuilder() {
         payload.resume_type =
           resumeType || "uploaded";
         payload.resume_id = Number(resumeId);
+
+        payload.use_source_layout =
+          !selectedTemplateId &&
+          String(selectedResumeId).startsWith("uploaded:");
       }
 
       const response = await api.post(
@@ -686,6 +731,11 @@ function ResumeBuilder() {
       );
 
       setGeneratedResumeId(response.data.id);
+      setGeneratedTemplateData(
+        response.data.template_data ||
+          selectedTemplate?.template_data ||
+          null
+      );
 
       setResumeContent(
         response.data.content ||
@@ -842,14 +892,14 @@ function ResumeBuilder() {
     }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = async (format) => {
     if (!generatedResumeId) {
       return;
     }
 
     try {
       const response = await api.get(
-        `/resume-builder/resumes/${generatedResumeId}/download/`,
+        `/resume-builder/resumes/${generatedResumeId}/download/?export_format=${format}`,
         {
           responseType: "blob",
         }
@@ -867,7 +917,7 @@ function ResumeBuilder() {
 
       link.href = url;
       link.download =
-        "optimized_resume.docx";
+        `optimized_resume.${format === "word" ? "docx" : "pdf"}`;
 
       document.body.appendChild(link);
 
@@ -1432,6 +1482,65 @@ function ResumeBuilder() {
 
   const renderResumePreview = () => {
     const personal = resumeContent.personal || {};
+    const templateData =
+      generatedTemplateData ||
+      selectedTemplate?.template_data ||
+      {};
+    const templatePreview = templateData.preview || {};
+    const templateHeaderStyle =
+      templatePreview.header_style || "centered";
+    const templateHeadingStyle =
+      templatePreview.heading_style || "bar";
+    const templateSkillStyle =
+      templatePreview.skill_style || "chips";
+    const templateFont =
+      templatePreview.font_css ||
+      (templateData.typography?.font
+        ? `'${templateData.typography.font}', 'Segoe UI', sans-serif`
+        : "Arial, Helvetica, sans-serif");
+    const templatePreviewStyle = {
+      "--rb-template-accent": templatePreview.accent || "#4f46e5",
+      "--rb-template-accent-soft": templatePreview.accent_soft || "#eef2ff",
+      "--rb-template-font": templateFont,
+    };
+    const defaultSectionOrder = [
+      "summary",
+      "experience",
+      "projects",
+      "education",
+      "publications",
+      "certifications",
+      "skills",
+    ];
+    const sectionAliases = {
+      "professional summary": "summary",
+      "career summary": "summary",
+      "work experience": "experience",
+      "professional experience": "experience",
+      "technical skills": "skills",
+      certificate: "certifications",
+      certificates: "certifications",
+      project: "projects",
+      publication: "publications",
+    };
+    const templateSections = Array.isArray(templateData.sections)
+      ? templateData.sections.map((section) => {
+        const normalized = String(section).trim().toLowerCase();
+        return sectionAliases[normalized] || normalized;
+      })
+      : [];
+    const sectionOrder = [
+      ...(Array.isArray(resumeContent.section_order)
+        ? resumeContent.section_order
+        : templateSections),
+      ...defaultSectionOrder,
+    ].filter((section, index, all) =>
+      defaultSectionOrder.includes(section) &&
+      all.indexOf(section) === index
+    );
+    const sectionStyle = (section) => ({
+      order: sectionOrder.indexOf(section) + 1,
+    });
     const skillEntries = Object.entries(
       resumeContent.skills || {}
     );
@@ -1439,11 +1548,38 @@ function ResumeBuilder() {
     const projectList = resumeContent.projects || [];
     const educationList = resumeContent.education || [];
     const certificationList = resumeContent.certifications || [];
+    const publicationList = resumeContent.publications || [];
 
     return (
-      <aside className="rb-preview-panel">
-        <div className="rb-preview-card">
-          <div className="rb-preview-header">
+      <aside
+        className={`rb-preview-panel${previewMaximized ? " rb-preview-maximized" : ""}`}
+      >
+        <div className="rb-preview-toolbar">
+          <div className="rb-preview-page-label">A4 page preview · 210 × 297 mm</div>
+          <button
+            type="button"
+            className="rb-preview-maximize"
+            onClick={() => setPreviewMaximized((value) => !value)}
+            aria-label={previewMaximized ? "Exit full-screen preview" : "Maximize live preview"}
+            title={previewMaximized ? "Exit full screen (Esc)" : "Maximize preview"}
+          >
+            {previewMaximized ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            {previewMaximized ? "Exit preview" : "Full screen"}
+          </button>
+        </div>
+        <div
+          className={`rb-preview-card rb-template-${templateHeaderStyle} rb-heading-${templateHeadingStyle} rb-skills-${templateSkillStyle} rb-density-${templatePreview.density || "comfortable"}`}
+          style={templatePreviewStyle}
+        >
+          <div
+            className={`rb-preview-header rb-header-${templateHeaderStyle}`}
+            style={{
+              textAlign:
+                templatePreview.header_align ||
+                templateData.header?.alignment ||
+                "left",
+            }}
+          >
             <h3>{personal.name || "Your Name"}</h3>
 
             <div className="rb-preview-meta">
@@ -1457,7 +1593,7 @@ function ResumeBuilder() {
           </div>
 
           {resumeContent.summary && (
-            <div className="rb-preview-section">
+            <div className="rb-preview-section" style={sectionStyle("summary")}>
               <h4>Professional Summary</h4>
 
               <p className="rb-preview-summary">
@@ -1467,7 +1603,7 @@ function ResumeBuilder() {
           )}
 
           {skillEntries.length > 0 && (
-            <div className="rb-preview-section">
+            <div className="rb-preview-section" style={sectionStyle("skills")}>
               <h4>Skills</h4>
 
               <div className="rb-preview-skill-grid">
@@ -1486,7 +1622,7 @@ function ResumeBuilder() {
           )}
 
           {experienceList.length > 0 && (
-            <div className="rb-preview-section">
+            <div className="rb-preview-section" style={sectionStyle("experience")}>
               <h4>Experience</h4>
 
               <div className="rb-preview-list">
@@ -1523,7 +1659,7 @@ function ResumeBuilder() {
           )}
 
           {projectList.length > 0 && (
-            <div className="rb-preview-section">
+            <div className="rb-preview-section" style={sectionStyle("projects")}>
               <h4>Projects</h4>
 
               <div className="rb-preview-list">
@@ -1555,7 +1691,7 @@ function ResumeBuilder() {
           )}
 
           {educationList.length > 0 && (
-            <div className="rb-preview-section">
+            <div className="rb-preview-section" style={sectionStyle("education")}>
               <h4>Education</h4>
 
               <div className="rb-preview-list">
@@ -1577,7 +1713,7 @@ function ResumeBuilder() {
           )}
 
           {certificationList.length > 0 && (
-            <div className="rb-preview-section">
+            <div className="rb-preview-section" style={sectionStyle("certifications")}>
               <h4>Certifications</h4>
 
               <div className="rb-preview-list">
@@ -1585,6 +1721,22 @@ function ResumeBuilder() {
                   <div key={index} className="rb-preview-list-card">
                     <strong>{item.name || "Certification"}</strong>
                     {item.issuer || "Issuer"}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {publicationList.length > 0 && (
+            <div className="rb-preview-section" style={sectionStyle("publications")}>
+              <h4>Publications</h4>
+              <div className="rb-preview-list">
+                {publicationList.map((item, index) => (
+                  <div key={index} className="rb-preview-list-card">
+                    <strong>{item.title || "Publication"}</strong>
+                    {[item.authors, item.venue, item.date]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </div>
                 ))}
               </div>
@@ -1615,8 +1767,8 @@ function ResumeBuilder() {
 
         .resume-builder-page {
           min-height: 100vh;
-          background: #f6f7fb;
-          color: #172033;
+          background: var(--bg);
+          color: var(--text);
           font-family:
             Inter,
             -apple-system,
@@ -1652,11 +1804,11 @@ function ResumeBuilder() {
           display: flex;
           align-items: center;
           justify-content: center;
-          color: white;
+          color: var(--on-accent);
           background: linear-gradient(
             135deg,
-            #5b5ce2,
-            #7c3aed
+            var(--accent),
+            var(--accent)
           );
           box-shadow:
             0 8px 24px
@@ -1672,7 +1824,7 @@ function ResumeBuilder() {
 
         .rb-brand p {
           margin: 3px 0 0;
-          color: #6b7280;
+          color: var(--text-muted);
           font-size: 13px;
         }
 
@@ -1682,9 +1834,9 @@ function ResumeBuilder() {
           gap: 7px;
           padding: 8px 13px;
           border-radius: 999px;
-          color: #4f46e5;
-          background: #eef2ff;
-          border: 1px solid #dfe3ff;
+          color: var(--accent-text);
+          background: var(--accent-soft);
+          border: 1px solid var(--accent-border);
           font-size: 12px;
           font-weight: 700;
         }
@@ -1700,8 +1852,8 @@ function ResumeBuilder() {
           position: sticky;
           top: 25px;
           padding: 17px;
-          background: white;
-          border: 1px solid #e5e7eb;
+          background: var(--surface);
+          border: 1px solid var(--border);
           border-radius: 17px;
           box-shadow:
             0 8px 30px
@@ -1710,7 +1862,7 @@ function ResumeBuilder() {
 
         .rb-sidebar-title {
           margin-bottom: 16px;
-          color: #9ca3af;
+          color: var(--text-faint);
           font-size: 11px;
           font-weight: 750;
           letter-spacing: 0.08em;
@@ -1724,12 +1876,12 @@ function ResumeBuilder() {
           padding: 10px;
           margin-bottom: 5px;
           border-radius: 10px;
-          color: #7b8495;
+          color: var(--text-muted);
         }
 
         .rb-step.active {
-          color: #4f46e5;
-          background: #f1f2ff;
+          color: var(--accent-text);
+          background: var(--accent-soft);
         }
 
         .rb-step-number {
@@ -1740,14 +1892,14 @@ function ResumeBuilder() {
           align-items: center;
           justify-content: center;
           border-radius: 9px;
-          color: #6b7280;
-          background: #f3f4f6;
+          color: var(--text-muted);
+          background: var(--surface-2);
         }
 
         .rb-step.active
           .rb-step-number {
-          color: white;
-          background: #5b5ce2;
+          color: var(--on-accent);
+          background: var(--accent);
         }
 
         .rb-step-text {
@@ -1762,8 +1914,8 @@ function ResumeBuilder() {
         .rb-card {
           padding: 24px;
           margin-bottom: 19px;
-          background: white;
-          border: 1px solid #e5e7eb;
+          background: var(--surface);
+          border: 1px solid var(--border);
           border-radius: 17px;
           box-shadow:
             0 8px 30px
@@ -1785,8 +1937,8 @@ function ResumeBuilder() {
           align-items: center;
           justify-content: center;
           border-radius: 10px;
-          color: #5557d8;
-          background: #f1f2ff;
+          color: var(--accent-text);
+          background: var(--accent-soft);
         }
 
         .rb-section-header h3 {
@@ -1797,7 +1949,7 @@ function ResumeBuilder() {
 
         .rb-section-header p {
           margin: 4px 0 0;
-          color: #7b8495;
+          color: var(--text-muted);
           font-size: 12px;
           line-height: 1.5;
         }
@@ -1810,21 +1962,21 @@ function ResumeBuilder() {
 
         .rb-source-card {
           padding: 18px;
-          border: 1.5px solid #e5e7eb;
+          border: 1.5px solid var(--border);
           border-radius: 13px;
           cursor: pointer;
-          background: white;
+          background: var(--surface);
           transition: 0.18s ease;
         }
 
         .rb-source-card:hover {
-          border-color: #a5a7f4;
+          border-color: var(--accent-border);
           transform: translateY(-1px);
         }
 
         .rb-source-card.selected {
-          border-color: #5b5ce2;
-          background: #f8f8ff;
+          border-color: var(--accent);
+          background: var(--bg-subtle);
           box-shadow:
             0 0 0 3px
             rgba(91, 92, 226, 0.08);
@@ -1838,8 +1990,8 @@ function ResumeBuilder() {
           justify-content: center;
           margin-bottom: 12px;
           border-radius: 10px;
-          color: #4f46e5;
-          background: #f1f2ff;
+          color: var(--accent-text);
+          background: var(--accent-soft);
         }
 
         .rb-source-card h4 {
@@ -1849,7 +2001,7 @@ function ResumeBuilder() {
 
         .rb-source-card p {
           margin: 0;
-          color: #7b8495;
+          color: var(--text-muted);
           font-size: 12px;
           line-height: 1.5;
         }
@@ -1861,7 +2013,7 @@ function ResumeBuilder() {
         .rb-field label {
           display: block;
           margin-bottom: 7px;
-          color: #374151;
+          color: var(--text-secondary);
           font-size: 12px;
           font-weight: 700;
         }
@@ -1871,11 +2023,11 @@ function ResumeBuilder() {
         .rb-select {
           width: 100%;
           padding: 11px 12px;
-          border: 1px solid #dfe3ea;
+          border: 1px solid var(--border);
           border-radius: 9px;
           outline: none;
-          color: #172033;
-          background: white;
+          color: var(--text);
+          background: var(--surface);
           font-family: inherit;
           font-size: 13px;
           transition: 0.18s ease;
@@ -1890,7 +2042,7 @@ function ResumeBuilder() {
         .rb-field input:focus,
         .rb-field textarea:focus,
         .rb-select:focus {
-          border-color: #696be6;
+          border-color: var(--accent);
           box-shadow:
             0 0 0 3px
             rgba(91, 92, 226, 0.09);
@@ -1904,10 +2056,10 @@ function ResumeBuilder() {
 
         .rb-upload {
           padding: 21px;
-          border: 1.5px dashed #cfd4df;
+          border: 1.5px dashed var(--border-strong);
           border-radius: 13px;
           text-align: center;
-          background: #fafbfc;
+          background: var(--bg-subtle);
         }
 
         .rb-upload-icon {
@@ -1918,8 +2070,8 @@ function ResumeBuilder() {
           justify-content: center;
           margin: 0 auto 10px;
           border-radius: 11px;
-          color: #5557d8;
-          background: #eef2ff;
+          color: var(--accent-text);
+          background: var(--accent-soft);
         }
 
         .rb-upload h4 {
@@ -1929,7 +2081,7 @@ function ResumeBuilder() {
 
         .rb-upload p {
           margin: 0 0 14px;
-          color: #7b8495;
+          color: var(--text-muted);
           font-size: 11px;
         }
 
@@ -1972,11 +2124,11 @@ function ResumeBuilder() {
         }
 
         .rb-button-primary {
-          color: white;
+          color: var(--on-accent);
           background: linear-gradient(
             135deg,
-            #5b5ce2,
-            #7048d9
+            var(--accent),
+            var(--accent)
           );
           box-shadow:
             0 8px 20px
@@ -1984,30 +2136,30 @@ function ResumeBuilder() {
         }
 
         .rb-button-secondary {
-          color: #374151;
-          background: #f3f4f6;
+          color: var(--text-secondary);
+          background: var(--surface-2);
         }
 
         .rb-button-outline {
-          color: #4f46e5;
-          background: white;
-          border: 1px solid #dfe2ff;
+          color: var(--accent-text);
+          background: var(--surface);
+          border: 1px solid var(--accent-border);
         }
 
         .rb-button-danger {
-          color: #dc2626;
-          background: #fff1f2;
+          color: var(--danger-text);
+          background: var(--danger-soft);
         }
 
         .rb-generate-box {
           padding: 21px;
-          border: 1px solid #e3e4ff;
+          border: 1px solid var(--accent-border);
           border-radius: 14px;
           background:
             linear-gradient(
               135deg,
-              #f4f4ff,
-              #faf7ff
+              var(--accent-soft),
+              var(--bg-subtle)
             );
         }
 
@@ -2025,7 +2177,7 @@ function ResumeBuilder() {
 
         .rb-generate-content p {
           margin: 0;
-          color: #6b7280;
+          color: var(--text-muted);
           font-size: 12px;
         }
 
@@ -2040,15 +2192,15 @@ function ResumeBuilder() {
         }
 
         .rb-alert-error {
-          color: #be123c;
-          background: #fff1f2;
-          border: 1px solid #fecdd3;
+          color: var(--danger-text);
+          background: var(--danger-soft);
+          border: 1px solid var(--danger-border);
         }
 
         .rb-alert-success {
-          color: #047857;
-          background: #ecfdf5;
-          border: 1px solid #bbf7d0;
+          color: var(--success-text);
+          background: var(--success-soft);
+          border: 1px solid var(--success-border);
         }
 
         .rb-template-list {
@@ -2063,19 +2215,19 @@ function ResumeBuilder() {
           align-items: center;
           gap: 8px;
           padding: 5px;
-          border: 1px solid #e5e7eb;
+          border: 1px solid var(--border);
           border-radius: 11px;
-          background: white;
+          background: var(--surface);
           transition: 0.18s ease;
         }
 
         .rb-template-item:hover {
-          border-color: #c7c9f7;
+          border-color: var(--accent-border);
         }
 
         .rb-template-item.selected {
-          border-color: #6869e6;
-          background: #f8f8ff;
+          border-color: var(--accent);
+          background: var(--bg-subtle);
           box-shadow:
             0 0 0 2px
             rgba(91, 92, 226, 0.05);
@@ -2102,8 +2254,8 @@ function ResumeBuilder() {
           align-items: center;
           justify-content: center;
           border-radius: 9px;
-          color: #5557d8;
-          background: #f1f2ff;
+          color: var(--accent-text);
+          background: var(--accent-soft);
         }
 
         .rb-template-info {
@@ -2114,8 +2266,8 @@ function ResumeBuilder() {
         }
 
         .rb-template-info strong {
-          overflow: hidden;
-          color: #273044;
+          overflow-y: auto;
+          color: var(--text);
           font-size: 13px;
           font-weight: 700;
           white-space: nowrap;
@@ -2123,13 +2275,13 @@ function ResumeBuilder() {
         }
 
         .rb-template-info span {
-          color: #8a91a1;
+          color: var(--text-muted);
           font-size: 10px;
         }
 
         .rb-template-check {
           margin-left: auto;
-          color: #5b5ce2;
+          color: var(--accent-text);
         }
 
         .rb-template-delete {
@@ -2141,13 +2293,13 @@ function ResumeBuilder() {
           border: none;
           border-radius: 8px;
           cursor: pointer;
-          color: #9ca3af;
+          color: var(--text-faint);
           background: transparent;
         }
 
         .rb-template-delete:hover {
-          color: #dc2626;
-          background: #fff1f2;
+          color: var(--danger-text);
+          background: var(--danger-soft);
         }
 
         .rb-empty-template {
@@ -2155,20 +2307,20 @@ function ResumeBuilder() {
           align-items: center;
           gap: 11px;
           padding: 14px;
-          border: 1px dashed #d9dce5;
+          border: 1px dashed var(--border-strong);
           border-radius: 11px;
-          color: #8a91a1;
-          background: #fafbfc;
+          color: var(--text-muted);
+          background: var(--bg-subtle);
         }
 
         .rb-empty-template > svg {
           flex: 0 0 auto;
-          color: #6869e6;
+          color: var(--accent-text);
         }
 
         .rb-empty-template strong {
           display: block;
-          color: #4b5563;
+          color: var(--text-secondary);
           font-size: 12px;
         }
 
@@ -2180,9 +2332,9 @@ function ResumeBuilder() {
         .rb-optimization-panel {
           padding: 20px;
           margin-bottom: 20px;
-          border: 1px solid #dddfff;
+          border: 1px solid var(--accent-border);
           border-radius: 15px;
-          background: linear-gradient(135deg, #f7f7ff 0%, #fcfaff 100%);
+          background: linear-gradient(135deg, var(--bg-subtle) 0%, var(--bg-subtle) 100%);
           box-shadow: 0 8px 24px rgba(79, 70, 229, 0.06);
         }
 
@@ -2201,7 +2353,7 @@ function ResumeBuilder() {
         }
 
         .rb-optimization-title svg {
-          color: #5b5ce2;
+          color: var(--accent-text);
         }
 
         .rb-optimization-title h3 {
@@ -2212,7 +2364,7 @@ function ResumeBuilder() {
 
         .rb-optimization-header p {
           margin: 5px 0 0;
-          color: #6b7280;
+          color: var(--text-muted);
           font-size: 12px;
           line-height: 1.55;
         }
@@ -2221,9 +2373,9 @@ function ResumeBuilder() {
           flex: 0 0 auto;
           padding: 6px 9px;
           border-radius: 999px;
-          color: #047857;
-          background: #ecfdf5;
-          border: 1px solid #bbf7d0;
+          color: var(--success-text);
+          background: var(--success-soft);
+          border: 1px solid var(--success-border);
           font-size: 10px;
           font-weight: 750;
         }
@@ -2231,22 +2383,22 @@ function ResumeBuilder() {
         .rb-optimization-summary {
           padding: 13px;
           margin-bottom: 14px;
-          border: 1px solid #e4e5ff;
+          border: 1px solid var(--accent-border);
           border-radius: 11px;
-          background: white;
+          background: var(--surface);
         }
 
         .rb-optimization-summary strong,
         .rb-optimization-section > strong {
           display: block;
           margin-bottom: 7px;
-          color: #374151;
+          color: var(--text-secondary);
           font-size: 12px;
         }
 
         .rb-optimization-summary p {
           margin: 0;
-          color: #4b5563;
+          color: var(--text-secondary);
           font-size: 12px;
           line-height: 1.6;
         }
@@ -2264,17 +2416,17 @@ function ResumeBuilder() {
         .rb-optimization-tag {
           padding: 5px 9px;
           border-radius: 999px;
-          color: #3730a3;
-          background: #eef2ff;
-          border: 1px solid #dfe3ff;
+          color: var(--accent-text);
+          background: var(--accent-soft);
+          border: 1px solid var(--accent-border);
           font-size: 10px;
           font-weight: 650;
         }
 
         .rb-optimization-tag.missing {
-          color: #b42318;
-          background: #fff1f2;
-          border-color: #fecdd3;
+          color: var(--danger-text);
+          background: var(--danger-soft);
+          border-color: var(--danger-border);
         }
 
         .rb-optimization-section-heading {
@@ -2286,12 +2438,12 @@ function ResumeBuilder() {
         }
 
         .rb-optimization-section-heading strong {
-          color: #374151;
+          color: var(--text-secondary);
           font-size: 12px;
         }
 
         .rb-optimization-section-heading span {
-          color: #7b8495;
+          color: var(--text-muted);
           font-size: 10px;
           font-weight: 650;
         }
@@ -2303,9 +2455,9 @@ function ResumeBuilder() {
 
         .rb-optimization-suggestion {
           padding: 14px;
-          border: 1px solid #e5e7eb;
+          border: 1px solid var(--border);
           border-radius: 12px;
-          background: white;
+          background: var(--surface);
         }
 
         .rb-optimization-suggestion-top {
@@ -2317,7 +2469,7 @@ function ResumeBuilder() {
         }
 
         .rb-optimization-section-name {
-          color: #4f46e5;
+          color: var(--accent-text);
           font-size: 11px;
           font-weight: 750;
         }
@@ -2330,13 +2482,13 @@ function ResumeBuilder() {
         }
 
         .rb-optimization-current {
-          background: #f8fafc;
-          border: 1px solid #e5e7eb;
+          background: var(--bg-subtle);
+          border: 1px solid var(--border);
         }
 
         .rb-optimization-improved {
-          background: #f0fdf4;
-          border: 1px solid #bbf7d0;
+          background: var(--success-soft);
+          border: 1px solid var(--success-border);
         }
 
         .rb-optimization-current span,
@@ -2350,24 +2502,24 @@ function ResumeBuilder() {
         }
 
         .rb-optimization-current span {
-          color: #6b7280;
+          color: var(--text-muted);
         }
 
         .rb-optimization-improved span {
-          color: #047857;
+          color: var(--success-text);
         }
 
         .rb-optimization-current p,
         .rb-optimization-improved p {
           margin: 0;
-          color: #374151;
+          color: var(--text-secondary);
           font-size: 11px;
           line-height: 1.55;
         }
 
         .rb-optimization-reason {
           margin-top: 9px;
-          color: #6b7280;
+          color: var(--text-muted);
           font-size: 10px;
           line-height: 1.5;
         }
@@ -2397,7 +2549,7 @@ function ResumeBuilder() {
 
         .rb-editor-subtitle {
           margin: 5px 0 0;
-          color: #7b8495;
+          color: var(--text-muted);
           font-size: 12px;
         }
 
@@ -2422,20 +2574,96 @@ function ResumeBuilder() {
           top: 20px;
         }
 
+        .rb-preview-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          margin-bottom: 8px;
+        }
+
+        .rb-preview-page-label {
+          color: var(--text-muted);
+          font-size: 11px;
+        }
+
+        .rb-preview-maximize {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 6px 9px;
+          border: 1px solid var(--border);
+          border-radius: 7px;
+          background: var(--surface);
+          color: var(--text-secondary);
+          cursor: pointer;
+          font: inherit;
+          font-size: 11px;
+        }
+
+        .rb-preview-maximize:hover {
+          border-color: var(--rb-template-accent);
+          color: var(--rb-template-accent);
+        }
+
+        .rb-preview-panel.rb-preview-maximized {
+          position: fixed;
+          inset: 0;
+          z-index: 1200;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 18px;
+          background: rgba(10, 14, 24, 0.88);
+          backdrop-filter: blur(4px);
+        }
+
+        .rb-preview-panel.rb-preview-maximized .rb-preview-toolbar {
+          width: min(92vw, 62vh);
+          flex: 0 0 auto;
+        }
+
+        .rb-preview-panel.rb-preview-maximized .rb-preview-page-label {
+          color: #e5e7eb;
+        }
+
+        .rb-preview-panel.rb-preview-maximized .rb-preview-maximize {
+          background: #fff;
+        }
+
+        .rb-preview-panel.rb-preview-maximized .rb-preview-card {
+          width: min(92vw, 62vh);
+          height: auto;
+          flex: 0 1 auto;
+          aspect-ratio: 210 / 297;
+          overflow-y: auto;
+        }
+
         .rb-preview-card {
-          background: linear-gradient(180deg, #ffffff 0%, #f8f9ff 100%);
-          border: 1px solid #e5e7eb;
-          border-radius: 16px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          width: 100%;
+          aspect-ratio: 210 / 297;
+          min-height: 0;
+          box-sizing: border-box;
+          overflow-y: auto;
+          background: #fff;
+          border: 1px solid #d1d5db;
+          border-radius: 2px;
           box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
           padding: 22px 20px;
-          min-height: 760px;
           color: #1f2937;
+          font-family: var(--rb-template-font);
         }
 
         .rb-preview-header {
-          border-bottom: 1px solid #e5e7eb;
+          order: 0;
+          border-bottom: 1px solid #d1d5db;
           padding-bottom: 12px;
           margin-bottom: 16px;
+          color: var(--rb-template-accent);
         }
 
         .rb-preview-header h3 {
@@ -2450,7 +2678,7 @@ function ResumeBuilder() {
           flex-wrap: wrap;
           gap: 8px 12px;
           margin-top: 8px;
-          color: #475569;
+          color: var(--text-secondary);
           font-size: 11px;
         }
 
@@ -2469,14 +2697,14 @@ function ResumeBuilder() {
           font-size: 12px;
           text-transform: uppercase;
           letter-spacing: 0.08em;
-          color: #4f46e5;
+          color: var(--rb-template-accent);
         }
 
         .rb-preview-summary {
           margin: 0;
           font-size: 12px;
           line-height: 1.6;
-          color: #374151;
+          color: var(--text-secondary);
         }
 
         .rb-preview-skill-grid {
@@ -2488,8 +2716,8 @@ function ResumeBuilder() {
         .rb-preview-skill {
           padding: 5px 8px;
           border-radius: 999px;
-          background: #eef2ff;
-          color: #3730a3;
+          background: var(--rb-template-accent-soft);
+          color: var(--rb-template-accent);
           font-size: 11px;
           font-weight: 600;
         }
@@ -2497,7 +2725,7 @@ function ResumeBuilder() {
         .rb-preview-item {
           margin-bottom: 14px;
           padding-bottom: 12px;
-          border-bottom: 1px solid #eef2f7;
+          border-bottom: 1px solid var(--border);
         }
 
         .rb-preview-item:last-child {
@@ -2512,22 +2740,22 @@ function ResumeBuilder() {
           gap: 12px;
           margin-bottom: 4px;
           font-size: 12px;
-          color: #374151;
+          color: var(--text-secondary);
         }
 
         .rb-preview-role strong {
           font-size: 13px;
-          color: #111827;
+          color: var(--text);
         }
 
         .rb-preview-role span {
-          color: #64748b;
+          color: var(--text-muted);
         }
 
         .rb-preview-bullets {
           margin: 7px 0 0;
           padding-left: 18px;
-          color: #374151;
+          color: var(--text-secondary);
           font-size: 11px;
           line-height: 1.5;
         }
@@ -2543,28 +2771,117 @@ function ResumeBuilder() {
 
         .rb-preview-list-card {
           font-size: 11px;
-          color: #374151;
+          color: var(--text-secondary);
           line-height: 1.5;
         }
 
         .rb-preview-list-card strong {
           display: block;
           margin-bottom: 2px;
-          color: #111827;
+          color: var(--text);
         }
 
         .rb-preview-empty {
-          color: #64748b;
+          color: var(--text-muted);
           font-size: 11px;
           font-style: italic;
+        }
+
+        .rb-preview-card.rb-template-accent .rb-preview-header {
+          border-left: 5px solid var(--rb-template-accent);
+          padding: 10px 12px;
+        }
+
+        .rb-preview-card.rb-template-minimal .rb-preview-header h3 {
+          text-transform: uppercase;
+          letter-spacing: 0.12em;
+        }
+
+        .rb-preview-card.rb-template-band .rb-preview-header {
+          margin: -22px -20px 16px;
+          padding: 18px 20px 14px;
+          background: var(--rb-template-accent);
+          color: #fff;
+        }
+
+        .rb-preview-card.rb-template-band .rb-preview-meta {
+          color: inherit;
+        }
+
+        .rb-preview-card.rb-template-split .rb-preview-header {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .rb-preview-card.rb-template-split .rb-preview-meta {
+          justify-content: flex-end;
+        }
+
+        .rb-preview-card.rb-template-boxed .rb-preview-header h3 {
+          display: inline-block;
+          padding: 8px 12px;
+          border: 2px solid var(--rb-template-accent);
+        }
+
+        .rb-preview-card.rb-heading-bar .rb-preview-section h4 {
+          padding-left: 8px;
+          border-left: 3px solid var(--rb-template-accent);
+        }
+
+        .rb-preview-card.rb-heading-rule .rb-preview-section h4 {
+          padding-bottom: 4px;
+          border-bottom: 1px solid var(--rb-template-accent);
+        }
+
+        .rb-preview-card.rb-heading-underline .rb-preview-section h4 {
+          text-decoration: underline;
+          text-decoration-color: var(--rb-template-accent);
+          text-underline-offset: 3px;
+        }
+
+        .rb-preview-card.rb-heading-caps .rb-preview-section h4 {
+          letter-spacing: 0.16em;
+        }
+
+        .rb-preview-card.rb-skills-pipes .rb-preview-skill {
+          padding: 0;
+          background: transparent;
+          color: inherit;
+          border-radius: 0;
+        }
+
+        .rb-preview-card.rb-skills-grid .rb-preview-skill-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .rb-preview-card.rb-skills-grid .rb-preview-skill {
+          border: 1px solid var(--rb-template-accent);
+          border-radius: 4px;
+          text-align: center;
+        }
+
+        .rb-preview-card.rb-density-compact .rb-preview-section {
+          margin-bottom: 10px;
+        }
+
+        .rb-preview-card.rb-density-compact .rb-preview-item {
+          margin-bottom: 8px;
+          padding-bottom: 6px;
+        }
+
+        .rb-preview-card.rb-density-airy .rb-preview-section {
+          margin-bottom: 24px;
         }
 
         .rb-editor-section {
           padding: 19px;
           margin-bottom: 15px;
-          border: 1px solid #e6e8ee;
+          border: 1px solid var(--border);
           border-radius: 13px;
-          background: white;
+          background: var(--surface);
         }
 
         .rb-editor-section-title {
@@ -2586,9 +2903,9 @@ function ResumeBuilder() {
         .rb-item {
           padding: 16px;
           margin-bottom: 12px;
-          border: 1px solid #e8eaf0;
+          border: 1px solid var(--border);
           border-radius: 12px;
-          background: #fafbfc;
+          background: var(--bg-subtle);
         }
 
         .rb-item-top {
@@ -2599,7 +2916,7 @@ function ResumeBuilder() {
         }
 
         .rb-item-number {
-          color: #6b7280;
+          color: var(--text-muted);
           font-size: 11px;
           font-weight: 750;
         }
@@ -2613,13 +2930,13 @@ function ResumeBuilder() {
           border: none;
           border-radius: 8px;
           cursor: pointer;
-          color: #6b7280;
-          background: #f3f4f6;
+          color: var(--text-muted);
+          background: var(--surface-2);
         }
 
         .rb-small-button:hover {
-          color: #dc2626;
-          background: #fff1f2;
+          color: var(--danger-text);
+          background: var(--danger-soft);
         }
 
         .rb-bullet-row {
@@ -2632,14 +2949,14 @@ function ResumeBuilder() {
           flex: 1;
           min-width: 0;
           padding: 9px 10px;
-          border: 1px solid #dfe3ea;
+          border: 1px solid var(--border);
           border-radius: 8px;
           outline: none;
           font-size: 12px;
         }
 
         .rb-bullet-row input:focus {
-          border-color: #696be6;
+          border-color: var(--accent);
           box-shadow:
             0 0 0 3px
             rgba(91, 92, 226, 0.08);
@@ -2648,9 +2965,9 @@ function ResumeBuilder() {
         .rb-skill-category {
           padding: 13px;
           margin-bottom: 10px;
-          border: 1px solid #e8eaf0;
+          border: 1px solid var(--border);
           border-radius: 11px;
-          background: #fafbfc;
+          background: var(--bg-subtle);
         }
 
         .rb-skill-category-top {
@@ -2667,7 +2984,7 @@ function ResumeBuilder() {
         .rb-skill-category input {
           width: 100%;
           padding: 9px 10px;
-          border: 1px solid #dfe3ea;
+          border: 1px solid var(--border);
           border-radius: 8px;
           outline: none;
           font-size: 12px;
@@ -2983,7 +3300,7 @@ function ResumeBuilder() {
                           : !selectedResumeOption
                             ? "Select an existing resume"
                             : selectedResumeOption.type === "uploaded"
-                              ? "Uploaded resume layout"
+                              ? "Uploaded resume layout reused (section order, fonts, page layout)"
                               : "Selected resume's saved template"}
                     </span>
 
@@ -3143,8 +3460,24 @@ function ResumeBuilder() {
                   <SectionHeader
                     icon={Briefcase}
                     title="Target job description"
-                    description="Paste the complete job description you want to optimize the resume for."
+                    description="Paste the job description. The role and company are also used to name your generated resume."
                   />
+
+                  <div className="rb-grid-2">
+                    <Field
+                      label="Target role"
+                      value={jobTitle}
+                      onChange={setJobTitle}
+                      placeholder="e.g. Backend Developer"
+                    />
+
+                    <Field
+                      label="Company"
+                      value={companyName}
+                      onChange={setCompanyName}
+                      placeholder="e.g. Acme Corp"
+                    />
+                  </div>
 
                   <TextAreaField
                     value={jobDescription}
@@ -4532,12 +4865,18 @@ function ResumeBuilder() {
                       <button
                         type="button"
                         className="rb-button rb-button-primary"
-                        onClick={
-                          handleDownload
-                        }
+                        onClick={() => handleDownload("pdf")}
                       >
                         <Download size={15} />
-                        Download Resume
+                        Download PDF
+                      </button>
+                      <button
+                        type="button"
+                        className="rb-button rb-button-outline"
+                        onClick={() => handleDownload("word")}
+                      >
+                        <FileText size={15} />
+                        Download Word
                       </button>
                     </div>
                   </div>
@@ -4566,5 +4905,3 @@ function ResumeBuilder() {
 }
 
 export default ResumeBuilder;
-
-

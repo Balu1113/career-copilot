@@ -13,6 +13,7 @@
 .topbar-action {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 7px;
 
   padding: 9px 15px;
@@ -20,34 +21,48 @@
   font-size: 13px;
   font-weight: 600;
 
-  color: #475569;
+  color: var(--text-secondary);
 
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  border: 1px solid var(--border);
   border-radius: 999px;
 
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-md);
+
+  transition:
+    background var(--transition),
+    color var(--transition),
+    border-color var(--transition),
+    transform var(--transition);
 }
 
 .topbar-action:hover {
-  background: #f8fafc;
-  color: #172033;
-  border-color: #cbd5e1;
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.topbar-theme {
+  width: 36px;
+  height: 36px;
+  padding: 0;
 }
 
 .topbar-action.active {
-  color: #4f46e5;
-  background: #eef2ff;
-  border-color: #dfe3ff;
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
 }
 
 .topbar-logout {
-  color: #dc2626;
-  border-color: #fecaca;
+  color: var(--danger-text);
+  border-color: var(--danger-border);
 }
 
 .topbar-logout:hover {
-  color: #b91c1c;
-  background: #fef2f2;
-  border-color: #fca5a5;
+  color: var(--danger-text);
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
 }

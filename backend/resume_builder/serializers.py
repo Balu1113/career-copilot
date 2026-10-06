@@ -109,6 +109,7 @@ class ResumeTemplateSerializer(serializers.ModelSerializer):
 
 class GeneratedResumeSerializer(serializers.ModelSerializer):
     output_file = serializers.SerializerMethodField()
+    template_data = serializers.SerializerMethodField()
 
     class Meta:
         model = GeneratedResume
@@ -120,6 +121,7 @@ class GeneratedResumeSerializer(serializers.ModelSerializer):
             "source_resume",
             "job_description",
             "content",
+            "template_data",
             "output_file",
             "status",
             "error_message",
@@ -130,6 +132,7 @@ class GeneratedResumeSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "output_file",
+            "template_data",
             "status",
             "error_message",
             "created_at",
@@ -164,3 +167,11 @@ class GeneratedResumeSerializer(serializers.ModelSerializer):
             "generated-resume-download",
             kwargs={"resume_id": generated_resume.id},
         ).removeprefix("/api/")
+
+    def get_template_data(self, generated_resume):
+        snapshot = generated_resume.template_data_snapshot
+        if isinstance(snapshot, dict) and snapshot:
+            return snapshot
+        if generated_resume.template:
+            return generated_resume.template.template_data or {}
+        return {}

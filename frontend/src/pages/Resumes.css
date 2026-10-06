@@ -13,7 +13,7 @@
 
 .page-header p {
   margin: 0;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .resume-grid {
@@ -31,9 +31,9 @@
 .resume-card {
   position: relative;
 
-  background: white;
+  background: var(--surface);
 
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
 
   border-radius: 14px;
 
@@ -48,7 +48,7 @@
 }
 
 .resume-card.active {
-  border-color: #6366f1;
+  border-color: var(--accent);
 }
 
 .resume-info {
@@ -63,9 +63,9 @@
 
   border-radius: 10px;
 
-  background: #eef2ff;
+  background: var(--accent-soft);
 
-  color: #4f46e5;
+  color: var(--accent-text);
 
   display: flex;
   align-items: center;
@@ -83,7 +83,7 @@
 .resume-info p {
   margin: 0;
 
-  color: #64748b;
+  color: var(--text-muted);
 
   font-size: 13px;
   overflow-wrap: anywhere;
@@ -95,7 +95,7 @@
   align-items: center;
   gap: 5px;
 
-  color: #15803d;
+  color: var(--success-text);
 
   font-size: 13px;
 
@@ -113,9 +113,9 @@
 .resume-actions button {
   border: none;
 
-  background: #eef2ff;
+  background: var(--accent-soft);
 
-  color: #4f46e5;
+  color: var(--accent-text);
 
   padding: 8px 11px;
 
@@ -143,43 +143,43 @@
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 10px;
   cursor: pointer;
-  background: white;
-  color: #64748b;
+  background: var(--surface);
+  color: var(--text-muted);
   font-family: inherit;
   font-size: 13px;
   font-weight: 650;
 }
 
 .resume-tab:hover {
-  border-color: #c7c9f7;
+  border-color: var(--accent-border);
 }
 
 .resume-tab.active {
-  color: #4f46e5;
-  background: #eef2ff;
-  border-color: #c7c9f7;
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
 }
 
 .tab-count {
   padding: 2px 8px;
   border-radius: 999px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--surface-2);
+  color: var(--text-muted);
   font-size: 11px;
   font-weight: 750;
 }
 
 .resume-tab.active .tab-count {
-  background: #dfe3ff;
-  color: #4f46e5;
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 
 .resume-icon.generated {
-  background: #f5f3ff;
-  color: #7c3aed;
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 
 .status-badge {
@@ -190,28 +190,28 @@
   font-size: 11px;
   font-weight: 700;
   text-transform: capitalize;
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--surface-2);
+  color: var(--text-secondary);
 }
 
 .status-badge.status-completed {
-  background: #ecfdf5;
-  color: #047857;
+  background: var(--success-soft);
+  color: var(--success-text);
 }
 
 .status-badge.status-generating {
-  background: #fef9c3;
-  color: #a16207;
+  background: var(--warning-soft);
+  color: var(--warning-text);
 }
 
 .status-badge.status-failed {
-  background: #fff1f2;
-  color: #be123c;
+  background: var(--danger-soft);
+  color: var(--danger-text);
 }
 
 .status-badge.status-draft {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--surface-2);
+  color: var(--text-muted);
 }
 
 .resume-actions button:disabled {
@@ -220,29 +220,37 @@
 }
 
 .resume-actions .edit-button {
-  background: #eef2ff;
-  color: #4f46e5;
+  background: var(--accent-soft);
+  color: var(--accent-text);
   display: flex;
   align-items: center;
   gap: 5px;
 }
 
 .resume-actions .download-button {
-  background: #ecfdf5;
-  color: #047857;
+  background: var(--success-soft);
+  color: var(--success-text);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.resume-actions .retry-button {
+  background: var(--warning-soft);
+  color: var(--warning-text);
   display: flex;
   align-items: center;
   gap: 5px;
 }
 
 .error-message {
-  color: #be123c;
+  color: var(--danger-text);
 }
 
 .empty-state {
-  background: white;
+  background: var(--surface);
 
-  border: 1px dashed #cbd5e1;
+  border: 1px dashed var(--border-strong);
 
   border-radius: 14px;
 
@@ -250,11 +258,11 @@
 
   text-align: center;
 
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .empty-state h2 {
-  color: #172033;
+  color: var(--text);
 }
 
 .page-loading {
@@ -262,7 +270,7 @@
 
   text-align: center;
 
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 
@@ -279,28 +287,28 @@
 }
 
 .processing-pending {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--surface-2);
+  color: var(--text-muted);
 }
 
 .processing-active {
-  background: #fff7ed;
-  color: #c2410c;
+  background: var(--warning-soft);
+  color: var(--warning-text);
 }
 
 .processing-complete {
-  background: #ecfdf5;
-  color: #047857;
+  background: var(--success-soft);
+  color: var(--success-text);
 }
 
 .processing-failed {
-  background: #fef2f2;
-  color: #b91c1c;
+  background: var(--danger-soft);
+  color: var(--danger-text);
 }
 
 .processing-error {
   margin-top: 6px;
-  color: #b91c1c;
+  color: var(--danger-text);
   font-size: 12px;
   line-height: 1.4;
 }

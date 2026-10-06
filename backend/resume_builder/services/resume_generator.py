@@ -1,3 +1,5 @@
+import re
+
 from pydantic import BaseModel
 
 from agents.services.structured_llm import (
@@ -5,9 +7,11 @@ from agents.services.structured_llm import (
 )
 
 from resume_builder.schemas import (
+    DEFAULT_RESUME_SECTION_ORDER,
     GeneratedResumeContent,
     ResumeOptimization,
     ResumeSummaryOutput,
+    ordered_resume_sections,
 )
 
 
@@ -225,6 +229,10 @@ instruction describing the change to make.
 Rules:
 - Return the COMPLETE updated resume as valid JSON matching the schema.
 - Keep every section that is not affected by the instruction exactly the same.
+- If the instruction changes section order, update section_order to match it.
+  Use only these section keys: summary, experience, projects, education,
+  publications, certifications, skills. Keep all keys exactly once and preserve
+  the current order when no reorder is requested.
 - Do not invent employers, job titles, companies, dates, degrees, metrics,
   achievements, or experience that is not in the resume or explicitly provided
   in the user instruction.
@@ -249,6 +257,73 @@ CURRENT RESUME CONTENT:
 Return ONLY the complete updated resume JSON object.
 """
 
+_RESUME_SECTION_ALIASES = {
+    "summary": ("professional summary", "career summary", "summary"),
+    "experience": ("work experience", "professional experience", "experience"),
+    "projects": ("projects", "project"),
+    "education": ("education",),
+    "publications": ("publications", "publication"),
+    "certifications": ("certifications", "certificates", "certification"),
+    "skills": ("technical skills", "skills"),
+}
+
+_MOVE_TO_EDGE = re.compile(
+    r"^(?:please\s+)?(?:move|put|place|bring)\s+(?:the\s+)?(.+?)\s+"
+    r"(?:to|at)\s+(?:the\s+)?(top|beginning|first|bottom|end|last)"
+    r"(?:\s+of\s+(?:the\s+)?resume)?[.!]?$",
+    re.IGNORECASE,
+)
+_MOVE_RELATIVE = re.compile(
+    r"^(?:please\s+)?(?:move|put|place)\s+(?:the\s+)?(.+?)\s+"
+    r"(before|after)\s+(?:the\s+)?(.+?)(?:\s+section)?[.!]?$",
+    re.IGNORECASE,
+)
+
+
+def _resume_section_key(label):
+    normalized = re.sub(r"[^a-z0-9]+", " ", label.lower()).strip()
+    normalized = re.sub(r"^(?:the )|(?: section)$", "", normalized).strip()
+    for section, aliases in _RESUME_SECTION_ALIASES.items():
+        if normalized in aliases:
+            return section
+    return None
+
+
+def _requested_resume_section_order(instruction, current_order):
+    """Parse explicit section-move instructions without relying on the LLM."""
+    match = _MOVE_TO_EDGE.fullmatch(instruction.strip())
+    if match:
+        section = _resume_section_key(match.group(1))
+        if section is None or section not in current_order:
+            return None
+
+        remaining = [item for item in current_order if item != section]
+        if match.group(2).lower() in {"top", "beginning", "first"}:
+            return [section, *remaining]
+        return [*remaining, section]
+
+    match = _MOVE_RELATIVE.fullmatch(instruction.strip())
+    if not match:
+        return None
+
+    section = _resume_section_key(match.group(1))
+    anchor = _resume_section_key(match.group(3))
+    if (
+        section is None
+        or anchor is None
+        or section == anchor
+        or section not in current_order
+        or anchor not in current_order
+    ):
+        return None
+
+    reordered = [item for item in current_order if item != section]
+    anchor_index = reordered.index(anchor)
+    if match.group(2).lower() == "after":
+        anchor_index += 1
+    reordered.insert(anchor_index, section)
+    return reordered
+
 
 def modify_resume_content(
     resume_content,
@@ -266,6 +341,20 @@ def modify_resume_content(
         raise ValueError(
             "Instruction is required."
         )
+
+    resume_content = dict(resume_content)
+    resume_content.setdefault(
+        "section_order",
+        DEFAULT_RESUME_SECTION_ORDER.copy(),
+    )
+    current_order = ordered_resume_sections(resume_content)
+    requested_order = _requested_resume_section_order(
+        instruction,
+        current_order,
+    )
+    if requested_order is not None:
+        resume_content["section_order"] = requested_order
+        return resume_content
 
     prompt = RESUME_MODIFY_USER_PROMPT.format(
         instruction=instruction,

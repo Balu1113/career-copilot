@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
@@ -11,7 +11,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import api from "../services/api";
-import "../styles/jobs.css";
+import "./Jobs.css";
 
 const Jobs = () => {
   const navigate = useNavigate();
@@ -23,6 +23,14 @@ const Jobs = () => {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    if (!notice) return undefined;
+
+    const timeout = setTimeout(() => setNotice(""), 3500);
+    return () => clearTimeout(timeout);
+  }, [notice]);
 
   const searchJobs = async (event) => {
     event?.preventDefault();
@@ -82,11 +90,11 @@ const Jobs = () => {
         status: "saved",
       });
 
-      alert("Job saved successfully.");
+      setNotice("Job saved to your applications.");
     } catch (err) {
       console.error(err);
 
-      alert(err?.response?.data?.detail || "Unable to save this job.");
+      setNotice(err?.response?.data?.detail || "Unable to save this job.");
     }
   };
 
@@ -101,6 +109,12 @@ const Jobs = () => {
           </p>
         </div>
       </div>
+
+      {notice && (
+        <div className="jobs-notice" role="status">
+          {notice}
+        </div>
+      )}
 
       <form className="jobs-search-card" onSubmit={searchJobs}>
         <div className="jobs-search-field">

@@ -55,3 +55,32 @@ class JobApplication(models.Model):
 
     def __str__(self):
         return f"{self.company} - {self.job_title}"
+
+
+class JobPosting(models.Model):
+    """A stored job description used to tailor resumes."""
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="job_postings",
+    )
+
+    content = models.TextField()
+
+    # Cached from keyword extraction (zero extra LLM calls downstream).
+    company = models.CharField(max_length=255, blank=True, default="")
+    role = models.CharField(max_length=255, blank=True, default="")
+
+    job_keywords = models.JSONField(null=True, blank=True)
+    job_keywords_hash = models.CharField(max_length=64, blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        label = self.role or self.company or f"Job {self.pk}"
+        return f"{label} - {self.user.username}"

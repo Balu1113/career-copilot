@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   AlertCircle,
@@ -9,9 +9,12 @@ import {
   CheckCircle2,
   Code2,
   Download,
+  FileText,
   FolderKanban,
   GraduationCap,
   Loader2,
+  Maximize2,
+  Minimize2,
   Plus,
   Save,
   Sparkles,
@@ -41,6 +44,15 @@ const emptyResumeContent = {
   education: [],
   certifications: [],
   publications: [],
+  section_order: [
+    "summary",
+    "experience",
+    "projects",
+    "education",
+    "publications",
+    "certifications",
+    "skills",
+  ],
 };
 
 const emptyExperience = {
@@ -103,6 +115,70 @@ const requiredSummarySections = [
   { key: "certifications", label: "Certifications" },
   { key: "projects", label: "Projects" },
 ];
+
+const resumeSectionAliases = {
+  summary: ["summary", "professional summary", "career summary"],
+  experience: ["experience", "work experience", "professional experience"],
+  projects: ["project", "projects"],
+  education: ["education"],
+  publications: ["publication", "publications"],
+  certifications: ["certificate", "certificates", "certification", "certifications"],
+  skills: ["skills", "technical skills"],
+};
+
+const normalizeResumeSection = (label) => {
+  const normalized = label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/^the\s+/, "")
+    .replace(/\s+section$/, "");
+
+  return Object.entries(resumeSectionAliases).find(([, aliases]) =>
+    aliases.includes(normalized)
+  )?.[0] || null;
+};
+
+const reorderSectionsFromInstruction = (instruction, currentOrder) => {
+  const order = [
+    ...(Array.isArray(currentOrder) ? currentOrder : []),
+    ...emptyResumeContent.section_order,
+  ].filter((section, index, all) =>
+    emptyResumeContent.section_order.includes(section) &&
+    all.indexOf(section) === index
+  );
+  const toEdge = instruction.match(
+    /^(?:please\s+)?(?:move|put|place|bring)\s+(?:the\s+)?(.+?)\s+(?:to|at)\s+(?:the\s+)?(top|beginning|first|bottom|end|last)(?:\s+of\s+(?:the\s+)?resume)?[.!]?$/i
+  );
+
+  if (toEdge) {
+    const section = normalizeResumeSection(toEdge[1]);
+    if (!section || !order.includes(section)) return null;
+
+    const rest = order.filter((item) => item !== section);
+    return ["top", "beginning", "first"].includes(toEdge[2].toLowerCase())
+      ? [section, ...rest]
+      : [...rest, section];
+  }
+
+  const relative = instruction.match(
+    /^(?:please\s+)?(?:move|put|place)\s+(?:the\s+)?(.+?)\s+(before|after)\s+(?:the\s+)?(.+?)(?:\s+section)?[.!]?$/i
+  );
+  if (!relative) return null;
+
+  const section = normalizeResumeSection(relative[1]);
+  const anchor = normalizeResumeSection(relative[3]);
+  if (!section || !anchor || section === anchor ||
+      !order.includes(section) || !order.includes(anchor)) {
+    return null;
+  }
+
+  const reordered = order.filter((item) => item !== section);
+  const anchorIndex = reordered.indexOf(anchor) +
+    (relative[2].toLowerCase() === "after" ? 1 : 0);
+  reordered.splice(anchorIndex, 0, section);
+  return reordered;
+};
 
 const isFilled = (value) => {
   if (value === null || value === undefined) return false;
@@ -199,6 +275,8 @@ function ResumeEdit() {
   const loading = loadedResumeKey !== `${type}:${id}`;
 
   const [content, setContent] = useState(emptyResumeContent);
+  const [templateData, setTemplateData] = useState({});
+  const [previewMaximized, setPreviewMaximized] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -211,6 +289,18 @@ function ResumeEdit() {
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    if (!previewMaximized) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setPreviewMaximized(false);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [previewMaximized]);
 
   const loadResume = async (routeType, routeId) => {
     if (routeType === "generated") {
@@ -229,13 +319,14 @@ function ResumeEdit() {
         title: found.title,
         sourceFile: "",
         content: found.content,
+        templateData: found.template_data || {},
         jobDescription: found.job_description || "",
       };
     }
 
     if (routeType === "uploaded") {
-      const response = await api.post(
-        `/resume-builder/resumes/edit-from-upload/${routeId}/`
+      const response = await api.get(
+        `/resumes/${routeId}/content/`
       );
       const data = response.data;
 
@@ -244,6 +335,7 @@ function ResumeEdit() {
         title: data.title,
         sourceFile: data.source_file || "",
         content: data.content,
+        templateData: {},
         jobDescription: "",
       };
     }
@@ -266,6 +358,7 @@ function ResumeEdit() {
           ...emptyResumeContent,
           ...(resume.content || {}),
         });
+        setTemplateData(resume.templateData || {});
         setJobDescription(resume.jobDescription);
       })
       .catch((err) => {
@@ -376,10 +469,15 @@ function ResumeEdit() {
     setSuccess("");
 
     try {
-      await api.patch(
-        `/resume-builder/resumes/${resumeId}/`,
-        { content }
-      );
+      if (type === "uploaded") {
+        await api.patch(`/resumes/${resumeId}/content/`, {
+          content,
+        });
+      } else {
+        await api.patch(`/resume-builder/resumes/${resumeId}/`, {
+          content,
+        });
+      }
 
        setSuccess(
          "Resume saved successfully."
@@ -396,24 +494,30 @@ function ResumeEdit() {
     }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = async (format = "pdf") => {
     if (!resumeId) return;
 
     setDownloading(true);
     setError("");
 
     try {
-      const response = await api.get(
-        `/resume-builder/resumes/${resumeId}/download/`,
-        { responseType: "blob" }
-      );
+      const downloadUrl =
+        type === "uploaded"
+          ? `/resumes/${resumeId}/content/download/`
+          : `/resume-builder/resumes/${resumeId}/download/?export_format=${format}`;
+
+      const response = await api.get(downloadUrl, {
+        responseType: "blob",
+      });
 
       const blob = new Blob([response.data]);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
 
       link.href = url;
-      link.download = `${title || "resume"}.docx`;
+      link.download = `${
+        title || "resume"
+      }${type === "uploaded" ? ".pdf" : format === "word" ? ".docx" : ".pdf"}`;
 
       document.body.appendChild(link);
       link.click();
@@ -444,13 +548,41 @@ function ResumeEdit() {
     setSuccess("");
 
     try {
-      const response = await api.post(
-        `/resume-builder/resumes/${resumeId}/ai-edit/`,
-        {
-          instruction: instruction.trim(),
-          job_description: jobDescription,
-        }
+      const reorderedSections = reorderSectionsFromInstruction(
+        instruction.trim(),
+        content.section_order
       );
+      if (reorderedSections) {
+        const updatedContent = {
+          ...content,
+          section_order: reorderedSections,
+        };
+        const updateUrl =
+          type === "uploaded"
+            ? `/resumes/${resumeId}/content/`
+            : `/resume-builder/resumes/${resumeId}/`;
+        const response = await api.patch(updateUrl, {
+          content: updatedContent,
+        });
+
+        setContent({
+          ...emptyResumeContent,
+          ...(response.data.content || updatedContent),
+        });
+        setInstruction("");
+        setSuccess("Resume sections reordered and saved. The live preview is updated.");
+        return;
+      }
+
+      const aiEditUrl =
+        type === "uploaded"
+          ? `/resumes/${resumeId}/content/ai-edit/`
+          : `/resume-builder/resumes/${resumeId}/ai-edit/`;
+
+      const response = await api.post(aiEditUrl, {
+        instruction: instruction.trim(),
+        job_description: jobDescription,
+      });
 
       setContent({
         ...emptyResumeContent,
@@ -840,11 +972,155 @@ function ResumeEdit() {
 
   const renderResumePreview = () => {
     const personal = content.personal || {};
+    const templatePreview = templateData.preview || {};
+    const headerStyle = templatePreview.header_style || "centered";
+    const headingStyle = templatePreview.heading_style || "rule";
+    const skillStyle = templatePreview.skill_style || "pipes";
+    const templateFont = templatePreview.font_css ||
+      (templateData.typography?.font
+        ? `'${templateData.typography.font}', Georgia, serif`
+        : 'Georgia, "Times New Roman", serif');
+    const previewStyle = {
+      "--ed-template-accent": templatePreview.accent || "#1f2937",
+      "--ed-template-accent-soft": templatePreview.accent_soft || "#f3f4f6",
+      "--ed-template-font": templateFont,
+      "--ed-template-header-size": `${Math.min(Number(templateData.header?.font_size || 25), 32)}px`,
+      "--ed-template-heading-size": `${Math.min(Number(templateData.section_heading?.font_size || 15), 20)}px`,
+      "--ed-template-body-size": `${Math.min(Number(templateData.typography?.body_size || 10), 14)}px`,
+    };
     const skillEntries = Object.entries(content.skills || {});
     const skills = skillEntries.flatMap(([, values]) => values || []);
+    const sectionOrder = [
+      ...(Array.isArray(content.section_order) ? content.section_order : []),
+      ...emptyResumeContent.section_order,
+    ].filter((section, index, order) =>
+      emptyResumeContent.section_order.includes(section) &&
+      order.indexOf(section) === index
+    );
+    const previewSections = {
+      summary: content.summary && (
+        <div className="ed-preview-section ed-preview-summary">
+          <h3>Professional Summary</h3>
+          <p>{content.summary}</p>
+        </div>
+      ),
+      publications: (content.publications || []).length > 0 && (
+        <div className="ed-preview-section ed-preview-publications">
+          <h3>Publications</h3>
+          {content.publications.map((item, index) => (
+            <div className="ed-preview-item" key={index}>
+              <p>
+                {item.authors && `${item.authors}. `}
+                {item.title && <strong>{item.title}.</strong>}
+                {item.venue && ` ${item.venue}.`}
+                {item.date && ` ${item.date}.`}
+                {item.url && (
+                  <>
+                    {" "}
+                    <a href={item.url} target="_blank" rel="noreferrer">
+                      {item.url}
+                    </a>
+                  </>
+                )}
+              </p>
+            </div>
+          ))}
+        </div>
+      ),
+      skills: skills.length > 0 && (
+        <div className="ed-preview-section ed-preview-skills">
+          <h3>Skills</h3>
+          <div className="ed-preview-tags">
+            {skillEntries.map(([category, values]) => (
+              <div className="ed-preview-skill-row" key={category}>
+                <span className="ed-preview-skill-category">{category}</span>
+                <span>{(values || []).join(", ")}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ),
+      experience: (content.experience || []).length > 0 && (
+        <div className="ed-preview-section ed-preview-experience">
+          <h3>Experience</h3>
+          {content.experience.map((item, index) => (
+            <div className="ed-preview-item" key={index}>
+              <div className="ed-preview-item-heading">
+                <strong>{item.role || "Role"}</strong>
+                <span>
+                  {item.start_date || ""}
+                  {item.start_date && item.end_date ? " - " : ""}
+                  {item.end_date || ""}
+                </span>
+              </div>
+              <div className="ed-preview-muted">
+                {item.company || "Company"}
+                {item.location ? ` | ${item.location}` : ""}
+              </div>
+              {(item.bullets || []).filter(Boolean).length > 0 && (
+                <ul>
+                  {(item.bullets || []).filter(Boolean).map((bullet, bulletIndex) => (
+                    <li key={bulletIndex}>{bullet}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      ),
+      projects: (content.projects || []).length > 0 && (
+        <div className="ed-preview-section ed-preview-projects">
+          <h3>Projects</h3>
+          {content.projects.map((item, index) => (
+            <div className="ed-preview-item" key={index}>
+              <strong>{item.name || "Project"}</strong>
+              {item.description && <p>{item.description}</p>}
+              {(item.technologies || []).length > 0 && (
+                <p className="ed-preview-project-tech">
+                  Technologies: {item.technologies.join(", ")}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      ),
+      education: (content.education || []).length > 0 && (
+        <div className="ed-preview-section ed-preview-education">
+          <h3>Education</h3>
+          {content.education.map((item, index) => (
+            <div className="ed-preview-item" key={index}>
+              <div className="ed-preview-item-heading">
+                <strong>{item.degree || "Degree"}</strong>
+                <span>
+                  {[item.start_date, item.end_date].filter(Boolean).join(" - ")}
+                </span>
+              </div>
+              <div className="ed-preview-muted">
+                {item.institution || "Institution"}
+                {item.location ? ` | ${item.location}` : ""}
+                {item.grade ? ` | ${item.grade}` : ""}
+              </div>
+            </div>
+          ))}
+        </div>
+      ),
+      certifications: (content.certifications || []).length > 0 && (
+        <div className="ed-preview-section ed-preview-certifications">
+          <h3>Certifications</h3>
+          {content.certifications.map((item, index) => (
+            <div className="ed-preview-item" key={index}>
+              <strong>{item.name || "Certification"}</strong>
+              <div className="ed-preview-muted">{item.issuer || "Issuer"}</div>
+            </div>
+          ))}
+        </div>
+      ),
+    };
 
     return (
-      <aside className="ed-preview-panel">
+      <aside
+        className={`ed-preview-panel${previewMaximized ? " ed-preview-maximized" : ""}`}
+      >
         {type === "uploaded" && sourceFile && (
           <div className="ed-source-preview">
             <div className="ed-source-preview-heading">
@@ -895,12 +1171,35 @@ function ResumeEdit() {
         )}
 
         <div className="ed-live-preview-heading">
-          <h2>Live Edited Preview</h2>
-          <p>Reflects the fields you are editing below.</p>
+          <div>
+            <h2>Live Edited Preview</h2>
+            <p>A4 page · 210 × 297 mm · reflects the fields below.</p>
+          </div>
+          <button
+            type="button"
+            className="ed-preview-maximize"
+            onClick={() => setPreviewMaximized((value) => !value)}
+            aria-label={previewMaximized ? "Exit full-screen preview" : "Maximize live preview"}
+            title={previewMaximized ? "Exit full screen (Esc)" : "Maximize preview"}
+          >
+            {previewMaximized ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+            {previewMaximized ? "Exit" : "Full screen"}
+          </button>
         </div>
 
-        <div className="ed-preview-card">
-          <div className="ed-preview-header">
+        <div
+          className={`ed-preview-card ed-template-${headerStyle} ed-heading-${headingStyle} ed-skills-${skillStyle} ed-density-${templatePreview.density || "comfortable"}`}
+          style={previewStyle}
+        >
+          <div
+            className={`ed-preview-header ed-header-${headerStyle}`}
+            style={{
+              textAlign:
+                templatePreview.header_align ||
+                templateData.header?.alignment ||
+                "center",
+            }}
+          >
             <h2>{personal.name || "Your Name"}</h2>
             <div className="ed-preview-meta">
               {[personal.email, personal.phone, personal.location, personal.linkedin, personal.github, personal.website]
@@ -911,133 +1210,9 @@ function ResumeEdit() {
             </div>
           </div>
 
-          {content.summary && (
-            <div className="ed-preview-section ed-preview-summary">
-              <h3>Professional Summary</h3>
-              <p>{content.summary}</p>
-            </div>
-          )}
-
-          {(content.publications || []).length > 0 && (
-            <div className="ed-preview-section ed-preview-publications">
-              <h3>Publications</h3>
-              {content.publications.map((item, index) => (
-                <div className="ed-preview-item" key={index}>
-                  <p>
-                    {item.authors && `${item.authors}. `}
-                    {item.title && <strong>{item.title}.</strong>}
-                    {item.venue && ` ${item.venue}.`}
-                    {item.date && ` ${item.date}.`}
-                    {item.url && (
-                      <>
-                        {" "}
-                        <a href={item.url} target="_blank" rel="noreferrer">
-                          {item.url}
-                        </a>
-                      </>
-                    )}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {skills.length > 0 && (
-            <div className="ed-preview-section ed-preview-skills">
-              <h3>Skills</h3>
-              <div className="ed-preview-tags">
-                {skillEntries.map(([category, values]) => (
-                  <div className="ed-preview-skill-row" key={category}>
-                    <span className="ed-preview-skill-category">
-                      {category}
-                    </span>
-                    <span>{(values || []).join(", ")}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {(content.experience || []).length > 0 && (
-            <div className="ed-preview-section ed-preview-experience">
-              <h3>Experience</h3>
-              {content.experience.map((item, index) => (
-                <div className="ed-preview-item" key={index}>
-                  <div className="ed-preview-item-heading">
-                    <strong>{item.role || "Role"}</strong>
-                    <span>
-                      {item.start_date || ""}
-                      {item.start_date && item.end_date ? " - " : ""}
-                      {item.end_date || ""}
-                    </span>
-                  </div>
-                  <div className="ed-preview-muted">
-                    {item.company || "Company"}
-                    {item.location ? ` | ${item.location}` : ""}
-                  </div>
-                  {(item.bullets || []).filter(Boolean).length > 0 && (
-                    <ul>
-                      {(item.bullets || []).filter(Boolean).map((bullet, bulletIndex) => (
-                        <li key={bulletIndex}>{bullet}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {(content.projects || []).length > 0 && (
-            <div className="ed-preview-section ed-preview-projects">
-              <h3>Projects</h3>
-              {content.projects.map((item, index) => (
-                <div className="ed-preview-item" key={index}>
-                  <strong>{item.name || "Project"}</strong>
-                  {item.description && <p>{item.description}</p>}
-                  {(item.technologies || []).length > 0 && (
-                    <p className="ed-preview-project-tech">
-                      Technologies: {item.technologies.join(", ")}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {(content.education || []).length > 0 && (
-            <div className="ed-preview-section ed-preview-education">
-              <h3>Education</h3>
-              {content.education.map((item, index) => (
-                <div className="ed-preview-item" key={index}>
-                  <div className="ed-preview-item-heading">
-                    <strong>{item.degree || "Degree"}</strong>
-                    <span>
-                      {[item.start_date, item.end_date]
-                        .filter(Boolean)
-                        .join(" - ")}
-                    </span>
-                  </div>
-                  <div className="ed-preview-muted">
-                    {item.institution || "Institution"}
-                    {item.location ? ` | ${item.location}` : ""}
-                    {item.grade ? ` | ${item.grade}` : ""}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {(content.certifications || []).length > 0 && (
-            <div className="ed-preview-section ed-preview-certifications">
-              <h3>Certifications</h3>
-              {content.certifications.map((item, index) => (
-                <div className="ed-preview-item" key={index}>
-                  <strong>{item.name || "Certification"}</strong>
-                  <div className="ed-preview-muted">{item.issuer || "Issuer"}</div>
-                </div>
-              ))}
-            </div>
-          )}
+          {sectionOrder.map((section) => (
+            <Fragment key={section}>{previewSections[section]}</Fragment>
+          ))}
 
           {!content.summary && !skills.length &&
             !(content.experience || []).length &&
@@ -1072,7 +1247,7 @@ function ResumeEdit() {
 
           <p>
             {type === "uploaded"
-              ? "Editing an uploaded resume. Changes are saved to the generated resume below."
+              ? "Editing an uploaded resume. Changes are saved to this uploaded resume."
               : "Editing a generated resume."}
           </p>
         </div>
@@ -1162,7 +1337,7 @@ function ResumeEdit() {
           label="Instruction for the AI agent"
           value={instruction}
           onChange={setInstruction}
-          placeholder='e.g. "Rewrite my experience bullets to sound more achievement-focused" or "Add a Tools category to my skills"'
+          placeholder='e.g. "Move Professional Summary to the top" or "Rewrite my experience bullets to sound more achievement-focused"'
           rows={4}
         />
 
@@ -1933,15 +2108,38 @@ function ResumeEdit() {
           )}
         </button>
 
-        <button
-          type="button"
-          className="ed-btn ed-btn-primary"
-          onClick={handleDownload}
-          disabled={downloading || !resumeId}
-        >
-          <Download size={15} />
-          Download Resume
-        </button>
+        {type === "uploaded" ? (
+          <button
+            type="button"
+            className="ed-btn ed-btn-primary"
+            onClick={() => handleDownload("pdf")}
+            disabled={downloading || !resumeId}
+          >
+            <Download size={15} />
+            Download PDF
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="ed-btn ed-btn-primary"
+              onClick={() => handleDownload("pdf")}
+              disabled={downloading || !resumeId}
+            >
+              <Download size={15} />
+              Download PDF
+            </button>
+            <button
+              type="button"
+              className="ed-btn ed-btn-outline"
+              onClick={() => handleDownload("word")}
+              disabled={downloading || !resumeId}
+            >
+              <FileText size={15} />
+              Download Word
+            </button>
+          </>
+        )}
       </div>
         </div>
 

@@ -44,6 +44,29 @@ class JobApplicationDetailView(
         )
     
 
+def _provider_error_response(exc: RuntimeError):
+    """Map an upstream job-provider failure to a sensible status code."""
+    message = str(exc)
+
+    # Upstream rate limit: tell the client to back off instead
+    # of surfacing a generic gateway error.
+    if "429" in message or "rate limit" in message.lower():
+        return Response(
+            {
+                "detail": (
+                    "The job search service is rate-limited "
+                    "right now. Please try again in a minute."
+                )
+            },
+            status=429,
+        )
+
+    return Response(
+        {"detail": message},
+        status=502,
+    )
+
+
 class JobSearchView(APIView):
     """
     Search real Indian job listings through IndianAPI.
@@ -139,12 +162,7 @@ class JobSearchView(APIView):
             )
 
         except RuntimeError as exc:
-            return Response(
-                {
-                    "detail": str(exc)
-                },
-                status=502,
-            )
+            return _provider_error_response(exc)
 
         except Exception as exc:
             return Response(
@@ -316,10 +334,7 @@ class RecommendedJobsView(APIView):
             )
 
         except RuntimeError as exc:
-            return Response(
-                {"detail": str(exc)},
-                status=502,
-            )
+            return _provider_error_response(exc)
 
         except Exception:
             return Response(

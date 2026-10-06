@@ -4,6 +4,20 @@ import pdfplumber
 from docx import Document
 
 
+def _style_name(paragraph):
+    """Style name for a paragraph.
+
+    Uploads from Word/LaTeX/Canva exports can miss the document's
+    default style, which leaves paragraph.style as None.
+    """
+    style = paragraph.style
+
+    if style is None:
+        return ""
+
+    return style.name
+
+
 def analyze_docx_template(file_path):
     document = Document(file_path)
 
@@ -59,7 +73,7 @@ def analyze_docx_template(file_path):
     seen_styles = set()
 
     for paragraph in document.paragraphs:
-        style_name = paragraph.style.name
+        style_name = _style_name(paragraph)
 
         if style_name not in heading_styles:
             continue
@@ -123,7 +137,7 @@ def analyze_docx_template(file_path):
     bullet_types = []
 
     for paragraph in document.paragraphs:
-        style_name = paragraph.style.name.lower()
+        style_name = _style_name(paragraph).lower()
 
         if "list bullet" in style_name:
             bullet_types.append("bullet")
@@ -153,7 +167,7 @@ def analyze_docx_template(file_path):
         if not text:
             continue
 
-        style_name = paragraph.style.name.lower()
+        style_name = _style_name(paragraph).lower()
 
         if (
             "heading" in style_name

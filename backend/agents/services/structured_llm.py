@@ -172,3 +172,64 @@ def generate_structured_output(
         f"{max_retries + 1} attempts. "
         f"Last error: {last_error}"
     )
+
+
+def generate_text_output(
+    system_prompt,
+    user_prompt,
+    temperature=0.7,
+    max_retries=1,
+):
+    """Plain-text completion (cover letters, outreach, titles)."""
+    client = get_client()
+    model = get_model()
+    request_timeout = float(
+        os.getenv("GEMINI_TIMEOUT_SECONDS", "60")
+    )
+    max_output_tokens = int(
+        os.getenv("GEMINI_MAX_OUTPUT_TOKENS", "4096")
+    )
+
+    full_prompt = f"{system_prompt}\n\n{user_prompt}"
+    last_error = None
+
+    for _attempt in range(max_retries + 1):
+        try:
+            generation_config = {
+                "temperature": temperature,
+                "max_output_tokens": max_output_tokens,
+            }
+
+            llm = client.GenerativeModel(
+                model_name=model,
+                generation_config=generation_config,
+            )
+
+            response = llm.generate_content(
+                full_prompt,
+                stream=False,
+                request_options={"timeout": request_timeout},
+            )
+
+            if hasattr(response, "text"):
+                content = response.text
+            elif hasattr(response, "content"):
+                content = response.content
+            else:
+                content = str(response)
+
+            if not content or not str(content).strip():
+                raise ValueError(
+                    "LLM returned an empty response."
+                )
+
+            return str(content).strip()
+
+        except Exception as exc:  # noqa: BLE001 - retry any provider failure
+            last_error = exc
+
+    raise ValueError(
+        f"Failed to generate text output after "
+        f"{max_retries + 1} attempts. "
+        f"Last error: {last_error}"
+    )

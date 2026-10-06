@@ -6,6 +6,7 @@ import {
   FileText,
   Loader2,
   Pencil,
+  RefreshCw,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -90,6 +91,14 @@ function Resumes() {
     });
   };
 
+  const retryProcessing = async (resumeId) => {
+    await runAction(resumeId, async () => {
+      await api.post(`/resumes/${resumeId}/process/`);
+
+      await fetchResumes(false);
+    });
+  };
+
   const deleteUploadedResume = async (resumeId) => {
     const confirmed = window.confirm(
       "Delete this uploaded resume?",
@@ -156,10 +165,10 @@ function Resumes() {
     });
   };
 
-  const downloadGeneratedResume = async (resume) => {
+  const downloadGeneratedResume = async (resume, format) => {
     await runAction(resume.id, async () => {
       const response = await api.get(
-        `/resume-builder/resumes/${resume.id}/download/`,
+        `/resume-builder/resumes/${resume.id}/download/?export_format=${format}`,
         {
           responseType: "blob",
         },
@@ -170,7 +179,7 @@ function Resumes() {
       const link = document.createElement("a");
 
       link.href = url;
-      link.download = `${resume.title || "resume"}.docx`;
+      link.download = `${resume.title || "resume"}.${format === "word" ? "docx" : "pdf"}`;
 
       document.body.appendChild(link);
       link.click();
@@ -207,7 +216,7 @@ function Resumes() {
     }
 
     return {
-      label: "Uploaded · AI Processing Pending",
+      label: "AI Processing Queued",
       className: "processing-pending",
     };
   };
@@ -311,8 +320,10 @@ function Resumes() {
           <span
             className={`processing-badge ${processingStatus.className}`}
           >
-            {processingStatus.className ===
-              "processing-active" && (
+            {(processingStatus.className ===
+              "processing-active" ||
+              processingStatus.className ===
+                "processing-pending") && (
               <Loader2
                 size={14}
                 className="spin"
@@ -397,6 +408,20 @@ function Resumes() {
             Download
           </button>
 
+          {processingStatus.className ===
+            "processing-failed" && (
+            <button
+              className="retry-button"
+              onClick={() =>
+                retryProcessing(resume.id)
+              }
+              disabled={actionPending(resume.id)}
+            >
+              <RefreshCw size={15} />
+              Retry AI
+            </button>
+          )}
+
           <button
             className="delete-button"
             onClick={() =>
@@ -458,20 +483,23 @@ function Resumes() {
 
           <button
             className="download-button"
-            onClick={() =>
-              downloadGeneratedResume(resume)
-            }
+            onClick={() => downloadGeneratedResume(resume, "pdf")}
             disabled={actionPending(resume.id)}
           >
             {actionPending(resume.id) ? (
-              <Loader2
-                size={15}
-                className="spin"
-              />
+              <Loader2 size={15} className="spin" />
             ) : (
               <Download size={15} />
             )}
-            Download
+            PDF
+          </button>
+          <button
+            className="download-button"
+            onClick={() => downloadGeneratedResume(resume, "word")}
+            disabled={actionPending(resume.id)}
+          >
+            <Download size={15} />
+            Word
           </button>
 
           <button

@@ -1,12 +1,17 @@
-import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import axios from "axios";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft, ArrowRight, ClipboardCheck, Sparkles } from "lucide-react";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  "http://127.0.0.1:8000/api";
+import api from "../services/api";
+import Badge from "../components/ui/Badge";
+import Button from "../components/ui/Button";
+import EmptyState from "../components/ui/EmptyState";
+import PageHeader from "../components/ui/PageHeader";
+import Spinner from "../components/ui/Spinner";
 
-export default function InterviewPractice() {
+import "./InterviewPractice.css";
+
+function InterviewPractice() {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -16,24 +21,31 @@ export default function InterviewPractice() {
   const [answer, setAnswer] = useState("");
   const [evaluation, setEvaluation] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   if (!analysis) {
     return (
-      <div style={{ padding: "40px" }}>
-        <h2>Interview Practice</h2>
-        <p>
-          No career analysis was selected.
-        </p>
+      <div className="practice-page">
+        <PageHeader
+          title="Interview Practice"
+          description="Practice answering interview questions generated from one of your career analyses."
+        />
 
-        <button onClick={() => navigate("/career")}>
-          Back to Career Analysis
-        </button>
+        <EmptyState
+          icon={ClipboardCheck}
+          title="No career analysis selected"
+          description="Run a career analysis first — its interview questions power this practice mode."
+          action={
+            <Button variant="primary" onClick={() => navigate("/career-analysis")}>
+              Go to Career Analysis
+            </Button>
+          }
+        />
       </div>
     );
   }
 
-  const preparation =
-    analysis.interview_preparation || {};
+  const preparation = analysis.interview_preparation || {};
 
   const questions = [
     ...(preparation.technical_questions || []),
@@ -45,250 +57,155 @@ export default function InterviewPractice() {
   const question = questions[questionIndex];
 
   const submitAnswer = async () => {
-    if (!answer.trim()) {
-      return;
-    }
+    if (!answer.trim()) return;
 
     setLoading(true);
     setEvaluation(null);
+    setError("");
 
     try {
-      const token = localStorage.getItem("access_token");
-
-      const response = await axios.post(
-        `${API_BASE_URL}/career/interview/evaluate/`,
-        {
-          analysis_id: analysis.id,
-          question: question.question,
-          category: question.category,
-          difficulty: question.difficulty,
-          answer: answer,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await api.post("/career/interview/evaluate/", {
+        analysis_id: analysis.id,
+        question: question.question,
+        category: question.category,
+        difficulty: question.difficulty,
+        answer,
+      });
 
       setEvaluation(response.data.evaluation);
-    } catch (error) {
-      console.error(
-        "Interview evaluation failed:",
-        error
-      );
-
-      alert(
-        error.response?.data?.error ||
-        "Failed to evaluate answer."
+    } catch (err) {
+      console.error("Interview evaluation failed:", err);
+      setError(
+        err.response?.data?.error || "Failed to evaluate your answer. Try again."
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const nextQuestion = () => {
-    if (questionIndex < questions.length - 1) {
-      setQuestionIndex(
-        questionIndex + 1
-      );
-
-      setAnswer("");
-      setEvaluation(null);
-    }
-  };
-
-  const previousQuestion = () => {
-    if (questionIndex > 0) {
-      setQuestionIndex(
-        questionIndex - 1
-      );
-
-      setAnswer("");
-      setEvaluation(null);
-    }
+  const goToQuestion = (nextIndex) => {
+    setQuestionIndex(nextIndex);
+    setAnswer("");
+    setEvaluation(null);
+    setError("");
   };
 
   if (!question) {
     return (
-      <div style={{ padding: "40px" }}>
-        <h2>Interview Practice</h2>
-        <p>
-          No interview questions are available
-          for this analysis.
-        </p>
+      <div className="practice-page">
+        <PageHeader title="Interview Practice" />
+
+        <EmptyState
+          icon={Sparkles}
+          title="No interview questions available"
+          description="This analysis does not include interview questions yet. Re-run the analysis to generate them."
+          action={
+            <Button variant="secondary" onClick={() => navigate("/career-analysis")}>
+              Back to Career Analysis
+            </Button>
+          }
+        />
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        maxWidth: "900px",
-        margin: "0 auto",
-        padding: "40px 20px",
-      }}
-    >
-      <h1>Interview Practice</h1>
+    <div className="practice-page">
+      <PageHeader
+        title="Interview Practice"
+        description={`Question ${questionIndex + 1} of ${questions.length} from your career analysis.`}
+        actions={
+          <Badge tone="accent">
+            {question.category} · {question.difficulty}
+          </Badge>
+        }
+      />
 
-      <p>
-        Question {questionIndex + 1} of{" "}
-        {questions.length}
-      </p>
-
-      <div
-        style={{
-          padding: "24px",
-          border: "1px solid #ddd",
-          borderRadius: "12px",
-          marginTop: "20px",
-        }}
-      >
-        <div>
-          <strong>
-            {question.category}
-          </strong>
-
-          {" • "}
-
-          <strong>
-            {question.difficulty}
-          </strong>
-        </div>
-
-        <h2 style={{ marginTop: "20px" }}>
-          {question.question}
-        </h2>
+      <section className="practice-question-card">
+        <h2>{question.question}</h2>
 
         <textarea
           value={answer}
-          onChange={(e) =>
-            setAnswer(e.target.value)
-          }
+          onChange={(event) => setAnswer(event.target.value)}
           placeholder="Type your answer here..."
           rows={8}
-          style={{
-            width: "100%",
-            marginTop: "20px",
-            padding: "12px",
-            resize: "vertical",
-            boxSizing: "border-box",
-          }}
+          aria-label="Your answer"
         />
 
-        <button
-          onClick={submitAnswer}
-          disabled={
-            loading ||
-            !answer.trim()
-          }
-          style={{
-            marginTop: "15px",
-            padding: "12px 20px",
-            cursor: "pointer",
-          }}
-        >
-          {loading
-            ? "Evaluating..."
-            : "Evaluate Answer"}
-        </button>
-      </div>
+        {error && (
+          <p className="practice-error" role="alert">
+            {error}
+          </p>
+        )}
 
-      {evaluation && (
-        <div
-          style={{
-            marginTop: "30px",
-            padding: "24px",
-            border: "1px solid #ddd",
-            borderRadius: "12px",
-          }}
-        >
-          <h2>
-            Score: {evaluation.score}/100
-          </h2>
+        <div className="practice-actions">
+          <Button
+            variant="primary"
+            onClick={submitAnswer}
+            disabled={loading || !answer.trim()}
+            loading={loading}
+          >
+            {loading ? "Evaluating..." : "Evaluate Answer"}
+          </Button>
+        </div>
+      </section>
 
-          <section>
-            <h3>Strengths</h3>
-
-            <ul>
-              {evaluation.strengths?.map(
-                (item, index) => (
-                  <li key={index}>
-                    {item}
-                  </li>
-                )
-              )}
-            </ul>
-          </section>
-
-          <section>
-            <h3>Missing Points</h3>
-
-            <ul>
-              {evaluation.missing_points?.map(
-                (item, index) => (
-                  <li key={index}>
-                    {item}
-                  </li>
-                )
-              )}
-            </ul>
-          </section>
-
-          <section>
-            <h3>Improvement Suggestions</h3>
-
-            <ul>
-              {evaluation.improvement_suggestions?.map(
-                (item, index) => (
-                  <li key={index}>
-                    {item}
-                  </li>
-                )
-              )}
-            </ul>
-          </section>
-
-          <section>
-            <h3>Ideal Answer Points</h3>
-
-            <ul>
-              {evaluation.ideal_answer_points?.map(
-                (item, index) => (
-                  <li key={index}>
-                    {item}
-                  </li>
-                )
-              )}
-            </ul>
-          </section>
+      {loading && (
+        <div className="practice-loading">
+          <Spinner label="Reviewing your answer..." />
         </div>
       )}
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginTop: "25px",
-        }}
-      >
-        <button
-          onClick={previousQuestion}
+      {evaluation && (
+        <section className="practice-evaluation">
+          <header className="practice-evaluation-header">
+            <h2>Evaluation</h2>
+            <span className="practice-score">{evaluation.score}/100</span>
+          </header>
+
+          <div className="practice-evaluation-grid">
+            {[
+              ["Strengths", evaluation.strengths],
+              ["Missing Points", evaluation.missing_points],
+              ["Improvement Suggestions", evaluation.improvement_suggestions],
+              ["Ideal Answer Points", evaluation.ideal_answer_points],
+            ].map(([heading, items]) =>
+              items?.length ? (
+                <div className="practice-evaluation-block" key={heading}>
+                  <h3>{heading}</h3>
+                  <ul>
+                    {items.map((item, index) => (
+                      <li key={index}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null
+            )}
+          </div>
+        </section>
+      )}
+
+      <nav className="practice-nav" aria-label="Question navigation">
+        <Button
+          variant="secondary"
+          onClick={() => goToQuestion(questionIndex - 1)}
           disabled={questionIndex === 0}
         >
+          <ArrowLeft size={16} />
           Previous
-        </button>
+        </Button>
 
-        <button
-          onClick={nextQuestion}
-          disabled={
-            questionIndex ===
-            questions.length - 1
-          }
+        <Button
+          variant="secondary"
+          onClick={() => goToQuestion(questionIndex + 1)}
+          disabled={questionIndex === questions.length - 1}
         >
           Next Question
-        </button>
-      </div>
+          <ArrowRight size={16} />
+        </Button>
+      </nav>
     </div>
   );
 }
+
+export default InterviewPractice;

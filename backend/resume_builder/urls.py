@@ -1,5 +1,16 @@
 from django.urls import path
 
+from .enrichment_views import (
+    ResumeEnrichmentAnalyzeView,
+    ResumeEnrichmentApplyRegeneratedView,
+    ResumeEnrichmentApplyView,
+    ResumeEnrichmentEnhanceView,
+    ResumeEnrichmentRegenerateView,
+)
+from .resume_wizard_views import (
+    ResumeWizardFinalizeView,
+    ResumeWizardTurnView,
+)
 from .views import (
     GeneratedResumeAIEditView,
     GeneratedResumeDownloadView,
@@ -11,7 +22,6 @@ from .views import (
     ResumeTemplateDetailView,
     ResumeTemplateListCreateView,
     ResumeTemplateSampleDownloadView,
-    UploadedResumeEditForkView,
 )
 
 urlpatterns = [
@@ -51,12 +61,6 @@ urlpatterns = [
     ),
 
     path(
-        "resumes/edit-from-upload/<int:resume_id>/",
-        UploadedResumeEditForkView.as_view(),
-        name="uploaded-resume-edit-fork",
-    ),
-
-    path(
         "resumes/<int:resume_id>/download/",
         GeneratedResumeDownloadView.as_view(),
         name="generated-resume-download",
@@ -78,5 +82,47 @@ urlpatterns = [
         "profile/",
         ResumeProfileView.as_view(),
         name="resume-profile",
+    ),
+
+    path(
+        "wizard/turn/",
+        ResumeWizardTurnView.as_view(),
+        name="resume-wizard-turn",
+    ),
+
+    path(
+        "wizard/finalize/",
+        ResumeWizardFinalizeView.as_view(),
+        name="resume-wizard-finalize",
+    ),
+
+    path(
+        "enrich/<int:resume_id>/analyze/",
+        ResumeEnrichmentAnalyzeView.as_view(),
+        name="resume-enrichment-analyze",
+    ),
+
+    path(
+        "enrich/<int:resume_id>/enhance/",
+        ResumeEnrichmentEnhanceView.as_view(),
+        name="resume-enrichment-enhance",
+    ),
+
+    path(
+        "enrich/<int:resume_id>/apply/",
+        ResumeEnrichmentApplyView.as_view(),
+        name="resume-enrichment-apply",
+    ),
+
+    path(
+        "enrich/<int:resume_id>/regenerate/",
+        ResumeEnrichmentRegenerateView.as_view(),
+        name="resume-enrichment-regenerate",
+    ),
+
+    path(
+        "enrich/<int:resume_id>/apply-regenerated/",
+        ResumeEnrichmentApplyRegeneratedView.as_view(),
+        name="resume-enrichment-apply-regenerated",
     ),
 ]

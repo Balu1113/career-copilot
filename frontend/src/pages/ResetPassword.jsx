@@ -83,7 +83,7 @@ function ResetPassword() {
             {loading ? "Updating password..." : "Reset password"}
           </button>
 
-          <p style={{ textAlign: "center", fontSize: "14px", color: "#64748b" }}>
+          <p style={{ textAlign: "center", fontSize: "14px", color: "var(--text-muted)" }}>
             <Link to="/login">Back to login</Link>
           </p>
         </form>

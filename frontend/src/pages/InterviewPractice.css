@@ -1,0 +1,134 @@
+.practice-page {
+  max-width: 900px;
+}
+
+.practice-question-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 26px;
+  box-shadow: var(--shadow-sm);
+}
+
+.practice-question-card h2 {
+  margin: 0 0 18px;
+  font-size: 21px;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+.practice-question-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+
+  padding: 14px;
+
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+
+  outline: none;
+  resize: vertical;
+
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
+}
+
+.practice-question-card textarea:focus {
+  border-color: var(--accent);
+  box-shadow: var(--ring);
+}
+
+.practice-error {
+  margin: 12px 0 0;
+  font-size: 13.5px;
+  color: var(--danger-text);
+}
+
+.practice-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.practice-loading {
+  margin-top: 18px;
+}
+
+.practice-evaluation {
+  margin-top: 26px;
+
+  background: var(--surface);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-lg);
+  padding: 26px;
+
+  box-shadow: var(--shadow-sm);
+}
+
+.practice-evaluation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
+  margin-bottom: 18px;
+}
+
+.practice-evaluation-header h2 {
+  margin: 0;
+  font-size: 19px;
+  letter-spacing: -0.01em;
+}
+
+.practice-score {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent-text);
+}
+
+.practice-evaluation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.practice-evaluation-block h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.practice-evaluation-block ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+  font-size: 14.5px;
+  line-height: 1.65;
+}
+
+.practice-evaluation-block li {
+  margin-bottom: 6px;
+}
+
+.practice-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  margin-top: 26px;
+}
+
+@media (max-width: 700px) {
+  .practice-evaluation-grid {
+    grid-template-columns: 1fr;
+  }
+}

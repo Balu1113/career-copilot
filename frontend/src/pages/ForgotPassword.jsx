@@ -55,7 +55,7 @@ function ForgotPassword() {
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>
-          <p style={{ marginBottom: "20px", color: "#64748b", fontSize: "14px", textAlign: "center" }}>
+          <p style={{ marginBottom: "20px", color: "var(--text-muted)", fontSize: "14px", textAlign: "center" }}>
             Enter your email address and we&apos;ll send you a link to reset your password.
           </p>
 
@@ -72,14 +72,14 @@ function ForgotPassword() {
           </div>
 
           {error && <p className="error-message">{error}</p>}
-          {success && <p style={{ margin: 0, fontSize: "13px", color: "#15803d", textAlign: "center" }}>{success}</p>}
+          {success && <p style={{ margin: 0, fontSize: "13px", color: "var(--success-text)", textAlign: "center" }}>{success}</p>}
 
           <button className="submit-button" type="submit" disabled={loading}>
             {loading ? "Sending..." : "Send Reset Link"}
           </button>
 
-          <p style={{ textAlign: "center", marginTop: "18px", fontSize: "14px", color: "#64748b" }}>
-            <Link to="/login" style={{ color: "#4f46e5", fontWeight: 500 }}>Back to Login</Link>
+          <p style={{ textAlign: "center", marginTop: "18px", fontSize: "14px", color: "var(--text-muted)" }}>
+            <Link to="/login" style={{ color: "var(--accent-text)", fontWeight: 500 }}>Back to Login</Link>
           </p>
         </form>
       </div>

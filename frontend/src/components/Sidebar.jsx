@@ -1,15 +1,23 @@
 import { useState } from "react";
 import {
   BarChart3,
+  BookOpenCheck,
   Brain,
   BriefcaseBusiness,
   CircleHelp,
+  ClipboardList,
   FileText,
   History,
+  LayoutDashboard,
   Map,
   Menu,
-  MessageSquare,
+  MessageSquareText,
+  Mic,
+  PenLine,
+  Settings,
   Sparkles,
+  ListChecks,
+  TrendingUp,
   X,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -20,32 +28,37 @@ const NAV_GROUPS = [
   {
     label: "Workspace",
     items: [
-      { label: "Dashboard", path: "/dashboard", icon: BarChart3 },
+      { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
       { label: "My Resumes", path: "/resumes", icon: FileText },
-      { label: "Resume Builder", path: "/resume-builder", icon: FileText },
+      { label: "Resume Builder", path: "/resume-builder", icon: PenLine },
       { label: "Jobs", path: "/jobs", icon: BriefcaseBusiness },
       { label: "Recommended Jobs", path: "/recommended-jobs", icon: Sparkles },
-      { label: "Applications", path: "/applications", icon: BriefcaseBusiness },
+      { label: "Applications", path: "/applications", icon: ClipboardList },
     ],
   },
   {
     label: "Career",
     items: [
-      { label: "Career Analysis", path: "/career-analysis", icon: Sparkles },
+      { label: "Career Analysis", path: "/career-analysis", icon: TrendingUp },
       { label: "Career History", path: "/career-history", icon: History },
       { label: "Career Roadmap", path: "/career-roadmap", icon: Map },
       { label: "Resume Intelligence", path: "/resume-intelligence", icon: Brain },
-      { label: "Resume AI Chat", path: "/resume-chat", icon: MessageSquare },
+      { label: "Resume AI Chat", path: "/resume-chat", icon: MessageSquareText },
     ],
   },
   {
     label: "Interview",
     items: [
-      { label: "Interview Prep", path: "/interview-prep", icon: MessageSquare },
-      { label: "Interview Simulator", path: "/interview-simulator", icon: MessageSquare },
+      { label: "Interview Prep", path: "/interview-prep", icon: BookOpenCheck },
+      { label: "Interview Simulator", path: "/interview-simulator", icon: Mic },
+      { label: "Interview Practice", path: "/interview-practice", icon: ListChecks },
       { label: "Interview Performance", path: "/interview-performance", icon: BarChart3 },
       { label: "Interview History", path: "/interview-history", icon: History },
     ],
+  },
+  {
+    label: "Account",
+    items: [{ label: "Settings", path: "/settings", icon: Settings }],
   },
 ];
 
@@ -99,7 +112,9 @@ function Sidebar() {
     <>
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <Sparkles size={22} />
+          <span className="sidebar-logo-mark" aria-hidden="true">
+            <Sparkles size={17} />
+          </span>
           <span>Career Copilot</span>
         </div>
 
@@ -110,7 +125,12 @@ function Sidebar() {
 
         <nav className="sidebar-nav" aria-label="Primary navigation">
           {NAV_GROUPS.map((group) => (
-            <div className="sidebar-nav-group" key={group.label}>
+            <div
+              className={`sidebar-nav-group${
+                group.label === "Account" ? " sidebar-bottom" : ""
+              }`}
+              key={group.label}
+            >
               <h2>{group.label}</h2>
               {group.items.map((item) => renderItem(item))}
             </div>

@@ -32,7 +32,10 @@ urlpatterns = [
         include("resume_builder.urls"),
     ),
 
-
+    path(
+        "api/agents/",
+        include("agents.urls"),
+    ),
 ]
 
 urlpatterns += static(

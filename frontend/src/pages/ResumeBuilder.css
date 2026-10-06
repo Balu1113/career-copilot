@@ -16,9 +16,9 @@
   gap: 10px;
   padding: 10px 12px;
   margin-bottom: 14px;
-  color: #334155;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
@@ -43,7 +43,7 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 
-  color: #94a3b8;
+  color: var(--text-faint);
 }
 
 .rb-template-group-count {
@@ -54,9 +54,9 @@
   font-size: 11px;
   font-weight: 700;
 
-  color: #64748b;
+  color: var(--text-muted);
 
-  background: #f1f5f9;
+  background: var(--surface-2);
   border-radius: 999px;
 }
 
@@ -69,9 +69,9 @@
 
   overflow: hidden;
 
-  background: #ffffff;
+  background: var(--surface);
 
-  border: 1.5px solid #e5e7eb;
+  border: 1.5px solid var(--border);
   border-radius: 12px;
 
   transition:
@@ -81,7 +81,7 @@
 }
 
 .rb-template-card:hover {
-  border-color: #c7d2fe;
+  border-color: var(--accent-border);
 
   box-shadow: 0 10px 26px rgba(91, 92, 226, 0.16);
 
@@ -89,9 +89,9 @@
 }
 
 .rb-template-card.selected {
-  border-color: #4f46e5;
+  border-color: var(--accent);
 
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.14);
+  box-shadow: var(--ring);
 }
 
 .rb-template-card-body {
@@ -122,14 +122,14 @@
   font-size: 13.5px;
   font-weight: 700;
 
-  color: #172033;
+  color: var(--text);
 }
 
 .rb-template-card-meta span {
   font-size: 11.5px;
   font-weight: 600;
 
-  color: #8a91a1;
+  color: var(--text-muted);
 }
 
 .rb-template-card-hint {
@@ -142,7 +142,7 @@
   font-size: 11.5px;
   font-weight: 600;
 
-  color: #4f46e5;
+  color: var(--accent-text);
 }
 
 
@@ -166,13 +166,13 @@
   font-size: 11.5px;
   font-weight: 700;
 
-  color: #047857;
+  color: var(--success-text);
 }
 
 .rb-template-card-placeholder {
   font-size: 11.5px;
 
-  color: #b0b7c3;
+  color: var(--text-faint);
 }
 
 .rb-template-card-del {
@@ -184,17 +184,17 @@
 
   padding: 5px;
 
-  color: #94a3b8;
+  color: var(--text-faint);
 
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 7px;
 }
 
 .rb-template-card-del:hover {
-  color: #dc2626;
-  background: #fff1f2;
-  border-color: #fecdd3;
+  color: var(--danger-text);
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
 }
 
 
@@ -222,7 +222,7 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
 
-  color: #94a3b8;
+  color: var(--text-faint);
 }
 
 .rb-template-file-preview iframe {
@@ -231,9 +231,9 @@
   width: 100%;
   height: 400px;
 
-  background: #ffffff;
+  background: var(--surface);
 
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 10px;
 }
 
@@ -244,9 +244,9 @@
   font-size: 13px;
   line-height: 1.55;
 
-  color: #6b7280;
+  color: var(--text-muted);
 
-  background: #f8fafc;
-  border: 1px dashed #d9dce5;
+  background: var(--bg-subtle);
+  border: 1px dashed var(--border-strong);
   border-radius: 10px;
 }

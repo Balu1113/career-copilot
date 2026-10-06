@@ -1,4 +1,61 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+
+ResumeSection = Literal[
+    "summary",
+    "experience",
+    "projects",
+    "education",
+    "publications",
+    "certifications",
+    "skills",
+]
+
+DEFAULT_RESUME_SECTION_ORDER = [
+    "summary",
+    "experience",
+    "projects",
+    "education",
+    "publications",
+    "certifications",
+    "skills",
+]
+
+
+def ordered_resume_sections(content, template_data=None):
+    """Return a complete, duplicate-free order for supported resume sections."""
+    requested_order = content.get("section_order")
+    if not isinstance(requested_order, list):
+        template_sections = (template_data or {}).get("sections", [])
+        if isinstance(template_sections, list):
+            section_aliases = {
+                "professional summary": "summary",
+                "career summary": "summary",
+                "work experience": "experience",
+                "professional experience": "experience",
+                "technical skills": "skills",
+                "certificates": "certifications",
+                "certificate": "certifications",
+                "project": "projects",
+                "publication": "publications",
+            }
+            requested_order = [
+                section_aliases.get(
+                    str(section).strip().lower(),
+                    str(section).strip().lower(),
+                )
+                for section in template_sections
+            ]
+        else:
+            requested_order = DEFAULT_RESUME_SECTION_ORDER
+
+    result = []
+    for section in requested_order + DEFAULT_RESUME_SECTION_ORDER:
+        if section in DEFAULT_RESUME_SECTION_ORDER and section not in result:
+            result.append(section)
+    return result
 
 
 class ResumePersonalInfo(BaseModel):
@@ -104,4 +161,8 @@ class GeneratedResumeContent(BaseModel):
 
     publications: list[ResumePublication] = Field(
         default_factory=list
+    )
+
+    section_order: list[ResumeSection] = Field(
+        default_factory=lambda: DEFAULT_RESUME_SECTION_ORDER.copy()
     )

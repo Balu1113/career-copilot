@@ -9,7 +9,6 @@ import {
   Target,
 } from "lucide-react";
 import api from "../services/api";
-import Sidebar from "../components/Sidebar";
 import "./CareerAnalysis.css";
 
 const stages = [
@@ -346,373 +345,369 @@ function CareerAnalysis() {
 };
 
   return (
-    <div className="dashboard-layout">
-      <Sidebar />
-
-      <main className="dashboard-main career-analysis-page">
-        <div className="career-analysis-header">
-          <div>
-            <div className="career-title">
-              <Brain size={27} />
-              <h1>Agentic Career Analysis</h1>
-            </div>
-
-            <p>
-              Analyze your resume against a target role using a multi-step AI
-              workflow.
-            </p>
+    <main className="dashboard-main career-analysis-page">
+      <div className="career-analysis-header">
+        <div>
+          <div className="career-title">
+            <Brain size={27} />
+            <h1>Agentic Career Analysis</h1>
           </div>
+
+          <p>
+            Analyze your resume against a target role using a multi-step AI
+            workflow.
+          </p>
+        </div>
+      </div>
+
+      {error && <div className="career-analysis-error">{error}</div>}
+
+      <section className="career-input-card">
+        <div className="career-input-heading">
+          <h2>Analyze Job Fit</h2>
+
+          <p>
+            Your resume is analyzed against the job description using a
+            multi-agent LangGraph workflow.
+          </p>
         </div>
 
-        {error && <div className="career-analysis-error">{error}</div>}
+        {selectedJob?.title && (
+          <div className="selected-job-card">
+            <div className="selected-job-card-top">
+              <div>
+                <span className="selected-job-label">SELECTED JOB</span>
 
-        <section className="career-input-card">
-          <div className="career-input-heading">
-            <h2>Analyze Job Fit</h2>
+                <h3>{selectedJob.title}</h3>
 
-            <p>
-              Your resume is analyzed against the job description using a
-              multi-agent LangGraph workflow.
-            </p>
-          </div>
-
-          {selectedJob?.title && (
-            <div className="selected-job-card">
-              <div className="selected-job-card-top">
-                <div>
-                  <span className="selected-job-label">SELECTED JOB</span>
-
-                  <h3>{selectedJob.title}</h3>
-
-                  {selectedJob.company && (
-                    <p className="selected-job-company">
-                      {selectedJob.company}
-                    </p>
-                  )}
-                </div>
-
-                <div className="selected-job-actions">
-                  {selectedJob.jobUrl && (
-                    <a
-                      href={selectedJob.jobUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="selected-job-link"
-                    >
-                      View Original Job ↗
-                    </a>
-                  )}
-
-                  <button
-                    type="button"
-                    className="tailor-resume-btn"
-                    onClick={() => {
-                      const [selectedResumeType] = String(resumeId).split(":");
-
-                      navigate("/resume-builder", {
-                        state: {
-                          mode: "modifier",
-                          resumeId,
-                          resumeType: selectedResumeType || "uploaded",
-                          jobDescription,
-                          jobTitle: selectedJob.title,
-                          company: selectedJob.company,
-                          location: selectedJob.location,
-                          jobUrl: selectedJob.jobUrl,
-                        },
-                      });
-                    }}
-                  >
-                    Tailor Resume
-                  </button>
-                </div>
+                {selectedJob.company && (
+                  <p className="selected-job-company">
+                    {selectedJob.company}
+                  </p>
+                )}
               </div>
 
-              <div className="selected-job-meta">
-                {selectedJob.location && <span>{selectedJob.location}</span>}
-
-                {selectedJob.jobType && <span>{selectedJob.jobType}</span>}
-
-                {selectedJob.experience && (
-                  <span>{selectedJob.experience}</span>
+              <div className="selected-job-actions">
+                {selectedJob.jobUrl && (
+                  <a
+                    href={selectedJob.jobUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="selected-job-link"
+                  >
+                    View Original Job ↗
+                  </a>
                 )}
 
-                {selectedJob.source && (
-                  <span>Source: {selectedJob.source}</span>
-                )}
+                <button
+                  type="button"
+                  className="tailor-resume-btn"
+                  onClick={() => {
+                    const [selectedResumeType] = String(resumeId).split(":");
 
-                {selectedJob.postedDate && (
-                  <span>Posted: {selectedJob.postedDate}</span>
-                )}
+                    navigate("/resume-builder", {
+                      state: {
+                        mode: "modifier",
+                        resumeId,
+                        resumeType: selectedResumeType || "uploaded",
+                        jobDescription,
+                        jobTitle: selectedJob.title,
+                        company: selectedJob.company,
+                        location: selectedJob.location,
+                        jobUrl: selectedJob.jobUrl,
+                      },
+                    });
+                  }}
+                >
+                  Tailor Resume
+                </button>
+              </div>
+            </div>
+
+            <div className="selected-job-meta">
+              {selectedJob.location && <span>{selectedJob.location}</span>}
+
+              {selectedJob.jobType && <span>{selectedJob.jobType}</span>}
+
+              {selectedJob.experience && (
+                <span>{selectedJob.experience}</span>
+              )}
+
+              {selectedJob.source && (
+                <span>Source: {selectedJob.source}</span>
+              )}
+
+              {selectedJob.postedDate && (
+                <span>Posted: {selectedJob.postedDate}</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={runAnalysis}>
+          <div className="career-form-group">
+            <label>Resume</label>
+
+            <select
+              value={resumeId}
+              onChange={(event) => setResumeId(event.target.value)}
+            >
+              {resumes.length === 0 ? (
+                <option value="">No resumes available</option>
+              ) : (
+                <>
+                  {resumes.some((resume) => resume.type === "uploaded") && (
+                    <optgroup label="Uploaded Resumes">
+                      {resumes
+                        .filter((resume) => resume.type === "uploaded")
+                        .map((resume) => (
+                          <option key={resume.value} value={resume.value}>
+                            {resume.label}
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
+
+                  {resumes.some((resume) => resume.type === "generated") && (
+                    <optgroup label="Generated Resumes">
+                      {resumes
+                        .filter((resume) => resume.type === "generated")
+                        .map((resume) => (
+                          <option key={resume.value} value={resume.value}>
+                            {resume.label}
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
+                </>
+              )}
+            </select>
+          </div>
+
+          <div className="career-form-group">
+            <label>Job Description</label>
+
+            <textarea
+              value={jobDescription}
+              onChange={(event) => setJobDescription(event.target.value)}
+              rows="9"
+              placeholder="Paste the target job description..."
+            />
+          </div>
+
+          <button
+            className="run-analysis-btn"
+            type="submit"
+            disabled={generating || resumes.length === 0}
+          >
+            {generating ? (
+              <>
+                <Loader2 size={18} className="spinning" />
+                Running AI Agents...
+              </>
+            ) : (
+              <>
+                <Brain size={18} />
+                Run Agentic Analysis
+              </>
+            )}
+          </button>
+        </form>
+      </section>
+
+      {(generating || result || completedNodes.length > 0 || error) && (
+        <section className="agent-pipeline">
+          <div className="pipeline-header">
+            <div>
+              <h2>Agent Pipeline</h2>
+
+              <p>
+                {generating
+                  ? "LangGraph is processing your career analysis."
+                  : error
+                    ? "The agent workflow encountered an error."
+                    : "LangGraph completed the career analysis workflow."}
+              </p>
+            </div>
+
+            {generating && (
+              <span className="pipeline-running">
+                <Loader2 size={15} className="spinning" />
+                Running
+              </span>
+            )}
+          </div>
+
+          <div className="pipeline">
+            {stages.map((stage, index) => {
+              const Icon = stage.icon;
+
+              const completed = completedNodes.includes(stage.node);
+
+              const running =
+                generating && currentNode === stage.node && !completed;
+
+              const failed =
+                !!error && currentNode === stage.node && !completed;
+
+              return (
+                <div className="pipeline-stage-wrapper" key={stage.key}>
+                  <div
+                    className={`pipeline-stage ${
+                      completed
+                        ? "completed"
+                        : running
+                          ? "running"
+                          : failed
+                            ? "failed"
+                            : ""
+                    }`}
+                  >
+                    <div className="pipeline-icon">
+                      {completed ? (
+                        <CheckCircle2 size={21} />
+                      ) : running ? (
+                        <Loader2 size={21} className="spinning" />
+                      ) : failed ? (
+                        "!"
+                      ) : (
+                        <Icon size={21} />
+                      )}
+                    </div>
+
+                    <div>
+                      <h3>{stage.title}</h3>
+
+                      <p>
+                        {completed
+                          ? "Completed"
+                          : running
+                            ? "Processing..."
+                            : failed
+                              ? "Failed"
+                              : stage.description}
+                      </p>
+                    </div>
+                  </div>
+
+                  {index < stages.length - 1 && (
+                    <div
+                      className={`pipeline-connector ${
+                        completed ? "active" : ""
+                      }`}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {result && (
+        <section className="career-results">
+          <div className="career-result-header">
+            <div>
+              <h2>Career Analysis</h2>
+
+              <p>Results generated by the agentic workflow.</p>
+            </div>
+
+            <CheckCircle2 size={27} />
+          </div>
+
+          {result?.career_recommendation?.match_summary && (
+            <div className="match-summary-section">
+              <h3>Match Summary</h3>
+
+              <div className="match-summary">
+                {result.career_recommendation.match_summary}
               </div>
             </div>
           )}
 
-          <form onSubmit={runAnalysis}>
-            <div className="career-form-group">
-              <label>Resume</label>
-
-              <select
-                value={resumeId}
-                onChange={(event) => setResumeId(event.target.value)}
-              >
-                {resumes.length === 0 ? (
-                  <option value="">No resumes available</option>
-                ) : (
-                  <>
-                    {resumes.some((resume) => resume.type === "uploaded") && (
-                      <optgroup label="Uploaded Resumes">
-                        {resumes
-                          .filter((resume) => resume.type === "uploaded")
-                          .map((resume) => (
-                            <option key={resume.value} value={resume.value}>
-                              {resume.label}
-                            </option>
-                          ))}
-                      </optgroup>
-                    )}
-
-                    {resumes.some((resume) => resume.type === "generated") && (
-                      <optgroup label="Generated Resumes">
-                        {resumes
-                          .filter((resume) => resume.type === "generated")
-                          .map((resume) => (
-                            <option key={resume.value} value={resume.value}>
-                              {resume.label}
-                            </option>
-                          ))}
-                      </optgroup>
-                    )}
-                  </>
-                )}
-              </select>
-            </div>
-
-            <div className="career-form-group">
-              <label>Job Description</label>
-
-              <textarea
-                value={jobDescription}
-                onChange={(event) => setJobDescription(event.target.value)}
-                rows="9"
-                placeholder="Paste the target job description..."
+          {result.resume_intelligence &&
+            Object.keys(result.resume_intelligence).length > 0 && (
+              <ResultObject
+                title="Resume Intelligence"
+                data={result.resume_intelligence}
               />
+            )}
+
+          <ResultObject
+            title="Job Requirements"
+            data={result.job_requirements}
+          />
+
+          <ResultObject
+            title="Resume Analysis"
+            data={result.resume_analysis}
+          />
+
+          <ResultObject
+            title="Skill Gap Analysis"
+            data={result.skill_gap_analysis}
+          />
+
+          <ResultObject
+            title="Career Recommendations"
+            data={result.career_recommendation}
+          />
+
+          <div className="resume-optimization-action">
+            <div>
+              <h3>Resume Optimization</h3>
+              <p>
+                Identify resume improvements for this job while keeping your
+                existing experience and evidence intact.
+              </p>
             </div>
 
             <button
-              className="run-analysis-btn"
-              type="submit"
-              disabled={generating || resumes.length === 0}
+              type="button"
+              className="optimize-resume-btn"
+              onClick={optimizeResume}
+              disabled={optimizationLoading}
             >
-              {generating ? (
+              {optimizationLoading ? (
                 <>
-                  <Loader2 size={18} className="spinning" />
-                  Running AI Agents...
+                  <Loader2 size={17} className="spinning" />
+                  Optimizing Resume...
                 </>
               ) : (
                 <>
-                  <Brain size={18} />
-                  Run Agentic Analysis
+                  <Lightbulb size={17} />
+                  Optimize Resume
                 </>
               )}
             </button>
-          </form>
+          </div>
+
+          {optimizationError && (
+            <div className="career-analysis-error">
+              {optimizationError}
+            </div>
+          )}
+
+          {optimization && (
+            <ResumeOptimizationCard
+              data={optimization}
+              resumeId={resumeId}
+              jobDescription={jobDescription}
+              selectedJob={selectedJob}
+              navigate={navigate}
+            />
+          )}
+
+          <ResultObject
+            title="Interview Preparation"
+            data={result.interview_preparation}
+            analysis={result}
+            analysisId={analysisId}
+          />
         </section>
-
-        {(generating || result || completedNodes.length > 0 || error) && (
-          <section className="agent-pipeline">
-            <div className="pipeline-header">
-              <div>
-                <h2>Agent Pipeline</h2>
-
-                <p>
-                  {generating
-                    ? "LangGraph is processing your career analysis."
-                    : error
-                      ? "The agent workflow encountered an error."
-                      : "LangGraph completed the career analysis workflow."}
-                </p>
-              </div>
-
-              {generating && (
-                <span className="pipeline-running">
-                  <Loader2 size={15} className="spinning" />
-                  Running
-                </span>
-              )}
-            </div>
-
-            <div className="pipeline">
-              {stages.map((stage, index) => {
-                const Icon = stage.icon;
-
-                const completed = completedNodes.includes(stage.node);
-
-                const running =
-                  generating && currentNode === stage.node && !completed;
-
-                const failed =
-                  !!error && currentNode === stage.node && !completed;
-
-                return (
-                  <div className="pipeline-stage-wrapper" key={stage.key}>
-                    <div
-                      className={`pipeline-stage ${
-                        completed
-                          ? "completed"
-                          : running
-                            ? "running"
-                            : failed
-                              ? "failed"
-                              : ""
-                      }`}
-                    >
-                      <div className="pipeline-icon">
-                        {completed ? (
-                          <CheckCircle2 size={21} />
-                        ) : running ? (
-                          <Loader2 size={21} className="spinning" />
-                        ) : failed ? (
-                          "!"
-                        ) : (
-                          <Icon size={21} />
-                        )}
-                      </div>
-
-                      <div>
-                        <h3>{stage.title}</h3>
-
-                        <p>
-                          {completed
-                            ? "Completed"
-                            : running
-                              ? "Processing..."
-                              : failed
-                                ? "Failed"
-                                : stage.description}
-                        </p>
-                      </div>
-                    </div>
-
-                    {index < stages.length - 1 && (
-                      <div
-                        className={`pipeline-connector ${
-                          completed ? "active" : ""
-                        }`}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {result && (
-          <section className="career-results">
-            <div className="career-result-header">
-              <div>
-                <h2>Career Analysis</h2>
-
-                <p>Results generated by the agentic workflow.</p>
-              </div>
-
-              <CheckCircle2 size={27} />
-            </div>
-
-            {result?.career_recommendation?.match_summary && (
-              <div className="match-summary-section">
-                <h3>Match Summary</h3>
-
-                <div className="match-summary">
-                  {result.career_recommendation.match_summary}
-                </div>
-              </div>
-            )}
-
-            {result.resume_intelligence &&
-              Object.keys(result.resume_intelligence).length > 0 && (
-                <ResultObject
-                  title="Resume Intelligence"
-                  data={result.resume_intelligence}
-                />
-              )}
-
-            <ResultObject
-              title="Job Requirements"
-              data={result.job_requirements}
-            />
-
-            <ResultObject
-              title="Resume Analysis"
-              data={result.resume_analysis}
-            />
-
-            <ResultObject
-              title="Skill Gap Analysis"
-              data={result.skill_gap_analysis}
-            />
-
-            <ResultObject
-              title="Career Recommendations"
-              data={result.career_recommendation}
-            />
-
-            <div className="resume-optimization-action">
-              <div>
-                <h3>Resume Optimization</h3>
-                <p>
-                  Identify resume improvements for this job while keeping your
-                  existing experience and evidence intact.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                className="optimize-resume-btn"
-                onClick={optimizeResume}
-                disabled={optimizationLoading}
-              >
-                {optimizationLoading ? (
-                  <>
-                    <Loader2 size={17} className="spinning" />
-                    Optimizing Resume...
-                  </>
-                ) : (
-                  <>
-                    <Lightbulb size={17} />
-                    Optimize Resume
-                  </>
-                )}
-              </button>
-            </div>
-
-            {optimizationError && (
-              <div className="career-analysis-error">
-                {optimizationError}
-              </div>
-            )}
-
-            {optimization && (
-              <ResumeOptimizationCard
-                data={optimization}
-                resumeId={resumeId}
-                jobDescription={jobDescription}
-                selectedJob={selectedJob}
-                navigate={navigate}
-              />
-            )}
-
-            <ResultObject
-              title="Interview Preparation"
-              data={result.interview_preparation}
-              analysis={result}
-              analysisId={analysisId}
-            />
-          </section>
-        )}
-      </main>
-    </div>
+      )}
+    </main>
   );
 }
 
