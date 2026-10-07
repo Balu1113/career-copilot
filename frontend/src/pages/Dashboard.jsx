@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   FileText,
   LoaderCircle,
+  Map,
   MessageSquare,
   Plus,
   Sparkles,
@@ -549,6 +550,38 @@ Analyze Job
 
               <p>
                 Track your job applications.
+              </p>
+
+            </div>
+
+
+            <ArrowRight size={18} />
+
+          </button>
+
+
+          <button
+            className="quick-action-card"
+            onClick={() =>
+              navigate("/career-roadmap")
+            }
+          >
+
+            <div className="quick-action-icon">
+
+              <Map size={21} />
+
+            </div>
+
+
+            <div>
+
+              <h3>
+                Career Roadmap
+              </h3>
+
+              <p>
+                Build a learning plan from your skill gaps.
               </p>
 
             </div>

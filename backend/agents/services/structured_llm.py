@@ -47,15 +47,17 @@ def generate_structured_output(
     user_prompt,
     schema: Type[T],
     max_retries=1,
+    max_output_tokens=None,
 ):
     client = get_client()
     model = get_model()
     request_timeout = float(
         os.getenv("GEMINI_TIMEOUT_SECONDS", "60")
     )
-    max_output_tokens = int(
-        os.getenv("GEMINI_MAX_OUTPUT_TOKENS", "4096")
-    )
+    if max_output_tokens is None:
+        max_output_tokens = int(
+            os.getenv("GEMINI_MAX_OUTPUT_TOKENS", "4096")
+        )
 
     current_prompt = user_prompt
     last_error = None

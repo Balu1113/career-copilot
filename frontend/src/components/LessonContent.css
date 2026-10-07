@@ -1,0 +1,209 @@
+.lesson-content-eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--accent-text);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.lesson-detail-overview,
+.lesson-detail-section,
+.lesson-detail-checkpoint,
+.lesson-project-challenge {
+  margin-bottom: 16px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface);
+}
+
+.lesson-detail-overview {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  border-color: var(--accent-border);
+  background: linear-gradient(
+    135deg,
+    var(--surface),
+    var(--accent-soft)
+  );
+}
+
+.lesson-detail-overview h2 {
+  margin: 0 0 8px;
+  font-size: 23px;
+}
+
+.lesson-detail-overview p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+.lesson-detail-time {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 7px;
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lesson-detail-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+}
+
+.lesson-detail-heading svg {
+  color: var(--accent-text);
+}
+
+.lesson-detail-heading h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.lesson-detail-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 23px;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+.lesson-detail-list--concepts,
+.lesson-detail-list--checklist {
+  padding-left: 0;
+  list-style: none;
+}
+
+.lesson-detail-list--concepts li,
+.lesson-detail-list--checklist li {
+  position: relative;
+  padding-left: 26px;
+}
+
+.lesson-detail-list--concepts li::before,
+.lesson-detail-list--checklist li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--accent);
+  border-radius: 4px;
+}
+
+.lesson-detail-prose {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.lesson-detail-prose--code {
+  padding: 15px 17px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* Deep-dive teaching sections */
+
+.lesson-deep-dives {
+  display: grid;
+  gap: 14px;
+}
+
+.lesson-deep-dive {
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--bg-subtle);
+}
+
+.lesson-deep-dive-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.lesson-deep-dive-heading span {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lesson-deep-dive-heading h3 {
+  margin: 0;
+  font-size: 15.5px;
+}
+
+.lesson-deep-dive p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+/* Project challenge + checkpoint */
+
+.lesson-project-challenge {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+}
+
+.lesson-project-challenge p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.lesson-detail-checkpoint {
+  border-color: var(--info-border);
+  background: var(--info-soft);
+}
+
+.lesson-detail-checkpoint strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--info-text);
+}
+
+.lesson-detail-checkpoint p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 700px) {
+  .lesson-detail-overview {
+    flex-direction: column;
+  }
+}

@@ -553,6 +553,13 @@
   margin-bottom: 18px;
 }
 
+.ed-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .ed-section-title h3 {
   display: flex;
   align-items: center;

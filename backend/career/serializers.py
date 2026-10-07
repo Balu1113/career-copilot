@@ -38,6 +38,26 @@ class InterviewPrepSerializer(serializers.Serializer):
     )
 
 
+class RoadmapTutorRequestSerializer(serializers.Serializer):
+    content_type = serializers.ChoiceField(
+        choices=["skill", "topic", "project", "phase"]
+    )
+    item_index = serializers.IntegerField(min_value=0)
+
+
+class RoadmapLessonPlanSerializer(serializers.Serializer):
+    level = serializers.ChoiceField(
+        choices=["beginner", "intermediate", "advanced"],
+        default="beginner",
+    )
+
+    regenerate = serializers.BooleanField(default=False)
+
+
+class RoadmapLessonUpdateSerializer(serializers.Serializer):
+    completed = serializers.BooleanField()
+
+
 class CareerAnalysisHistorySerializer(
     serializers.ModelSerializer
 ):

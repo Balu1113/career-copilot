@@ -21,6 +21,7 @@ from .services.docx_renderer import render_resume_to_docx
 from .services.pdf_renderer import render_resume_to_pdf
 from .services.resume_generator import (
     generate_resume_optimization,
+    generate_resume_projects,
     generate_resume_summary,
     modify_resume_content,
 )
@@ -892,6 +893,46 @@ class ResumeSummaryGenerationView(APIView):
                 {
                     "detail": (
                         f"Failed to generate professional summary: {str(exc)}"
+                    )
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class ResumeProjectsGenerationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        content = request.data.get("content")
+        job_description = (
+            request.data.get("job_description", "")
+            or ""
+        )
+
+        if content is None:
+            return Response(
+                {
+                    "detail": "Resume content is required."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            projects = generate_resume_projects(
+                content,
+                job_description=job_description,
+            )
+
+            return Response(
+                {"projects": projects},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as exc:
+            return Response(
+                {
+                    "detail": (
+                        "Failed to generate projects: "
+                        f"{str(exc)}"
                     )
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

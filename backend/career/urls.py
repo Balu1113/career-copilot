@@ -12,6 +12,9 @@ from .views import (
     CareerRoadmapView,
     CareerRoadmapListView,
     CareerRoadmapDetailView,
+    CareerRoadmapTutorView,
+    CareerRoadmapLessonView,
+    CareerRoadmapLessonDetailView,
     StartInterviewView,
     SubmitInterviewAnswerView,
     InterviewSessionDetailView,
@@ -75,6 +78,24 @@ urlpatterns = [
         "roadmaps/<int:roadmap_id>/",
         CareerRoadmapDetailView.as_view(),
         name="career-roadmap-detail",
+    ),
+    path(
+        "roadmaps/<int:roadmap_id>/tutor/",
+        CareerRoadmapTutorView.as_view(),
+        name="career-roadmap-tutor",
+    ),
+
+    path(
+        "roadmaps/<int:roadmap_id>/lessons/",
+        CareerRoadmapLessonView.as_view(),
+        name="career-roadmap-lessons",
+    ),
+
+    path(
+        "roadmaps/<int:roadmap_id>/lessons/"
+        "<int:lesson_id>/",
+        CareerRoadmapLessonDetailView.as_view(),
+        name="career-roadmap-lesson-detail",
     ),
 
     path(

@@ -10,6 +10,7 @@ from resume_builder.schemas import (
     DEFAULT_RESUME_SECTION_ORDER,
     GeneratedResumeContent,
     ResumeOptimization,
+    ResumeProjectsOutput,
     ResumeSummaryOutput,
     ordered_resume_sections,
 )
@@ -184,6 +185,127 @@ def generate_resume_summary(
 
     summary = result.get("summary", "")
     return summary.strip()
+
+
+RESUME_PROJECTS_SYSTEM_PROMPT = """
+You are a professional resume writer.
+
+Add NEW project entries to the Projects section of a resume from the
+provided resume details.
+
+Rules:
+- Base each new project on the candidate's Skills section. Every
+  technology used by a project must appear in the Skills section or
+  in the experience bullets.
+- Read the JOB DESCRIPTION and collect its required technical skills.
+  Only return projects that are clearly related to at least one
+  required technical skill. Exclude any project that is not relevant
+  to those required technical skills. If the job description lists no
+  required technical skills, target the candidate's Skills section.
+- Never modify, rewrite, reorder, or repeat the existing projects in
+  the resume. They were extracted from the user's uploaded resume and
+  must stay exactly as they are. Return only ADDITIONAL projects, and
+  never return a project whose name already exists in the resume.
+- Return 2 to 4 new projects.
+- Projects are portfolio, academic, freelance, or personal work. Do
+  not invent employers, job titles, metrics, or achievements.
+- descriptions: 1 to 2 clear sentences explaining what the project is
+  and why it matters.
+- bullets: 2 to 4 short achievement-style points per project, each
+  describing what was built or improved and the technology used.
+- url: always "" (do not invent links).
+- Return only valid JSON.
+"""
+
+RESUME_PROJECTS_USER_PROMPT = """
+Generate NEW projects to append to the resume below.
+
+JOB DESCRIPTION:
+{job_description}
+
+RESUME CONTENT:
+{resume_content}
+
+The RESUME CONTENT contains an existing "projects" list extracted
+from the uploaded resume. Treat it as read-only: do not modify it
+and do not repeat it. Return only new, additional projects based on
+the Skills section and the job description's required technical
+skills.
+
+Return ONLY:
+{{
+  "projects": [
+    {{
+      "name": "...",
+      "description": "...",
+      "technologies": ["..."],
+      "url": "",
+      "bullets": ["...", "..."]
+    }}
+  ]
+}}
+"""
+
+
+def generate_resume_projects(
+    resume_content,
+    job_description="",
+):
+    if resume_content is None:
+        raise ValueError(
+            "Resume content is required."
+        )
+
+    prompt = RESUME_PROJECTS_USER_PROMPT.format(
+        job_description=(
+            job_description.strip()
+            if job_description
+            else "No specific target role provided."
+        ),
+        resume_content=resume_content,
+    )
+
+    result = generate_structured_output(
+        system_prompt=RESUME_PROJECTS_SYSTEM_PROMPT,
+        user_prompt=prompt,
+        schema=ResumeProjectsOutput,
+    )
+
+    projects = result.get("projects", [])
+    if not isinstance(projects, list):
+        return []
+
+    existing_names = set()
+    if isinstance(resume_content, dict):
+        existing_projects = resume_content.get(
+            "projects",
+            [],
+        )
+
+        if isinstance(existing_projects, list):
+            for project in existing_projects:
+                if isinstance(project, dict):
+                    name = str(
+                        project.get("name", "")
+                    ).strip().lower()
+                    if name:
+                        existing_names.add(name)
+
+    new_projects = []
+    for project in projects:
+        if not isinstance(project, dict):
+            continue
+
+        name = str(
+            project.get("name", "")
+        ).strip().lower()
+        if not name or name in existing_names:
+            continue
+
+        existing_names.add(name)
+        new_projects.append(project)
+
+    return new_projects
 
 
 def generate_resume_optimization(

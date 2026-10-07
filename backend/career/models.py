@@ -102,6 +102,16 @@ class CareerRoadmap(models.Model):
         default=dict,
     )
 
+    learner_level = models.CharField(
+        max_length=20,
+        choices=[
+            ("beginner", "Beginner"),
+            ("intermediate", "Intermediate"),
+            ("advanced", "Advanced"),
+        ],
+        default="beginner",
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True,
     )
@@ -115,6 +125,76 @@ class CareerRoadmap(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.user}"
+
+
+class RoadmapLesson(models.Model):
+    LEVEL_CHOICES = [
+        ("beginner", "Beginner"),
+        ("intermediate", "Intermediate"),
+        ("advanced", "Advanced"),
+    ]
+
+    CONTENT_TYPE_CHOICES = [
+        ("skill", "Skill"),
+        ("topic", "Topic"),
+        ("project", "Project"),
+        ("phase", "Phase"),
+    ]
+
+    roadmap = models.ForeignKey(
+        CareerRoadmap,
+        on_delete=models.CASCADE,
+        related_name="lessons",
+    )
+
+    content_type = models.CharField(
+        max_length=20,
+        choices=CONTENT_TYPE_CHOICES,
+    )
+
+    item_index = models.PositiveIntegerField()
+
+    position = models.PositiveIntegerField()
+
+    level = models.CharField(
+        max_length=20,
+        choices=LEVEL_CHOICES,
+        default="beginner",
+    )
+
+    title = models.CharField(max_length=255)
+
+    overview = models.TextField(blank=True, default="")
+
+    estimated_time = models.CharField(
+        max_length=60,
+        blank=True,
+        default="",
+    )
+
+    lesson_data = models.JSONField(default=dict)
+
+    completed = models.BooleanField(default=False)
+
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["position"]
+        unique_together = [
+            ("roadmap", "content_type", "item_index"),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.title} - roadmap {self.roadmap_id}"
+        )
 
 
 class InterviewSession(models.Model):

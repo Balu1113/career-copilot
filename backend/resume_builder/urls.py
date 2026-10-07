@@ -18,6 +18,7 @@ from .views import (
     GeneratedResumeUpdateView,
     ResumeContentGenerationView,
     ResumeProfileView,
+    ResumeProjectsGenerationView,
     ResumeSummaryGenerationView,
     ResumeTemplateDetailView,
     ResumeTemplateListCreateView,
@@ -76,6 +77,12 @@ urlpatterns = [
         "summary/generate/",
         ResumeSummaryGenerationView.as_view(),
         name="resume-summary-generate",
+    ),
+
+    path(
+        "projects/generate/",
+        ResumeProjectsGenerationView.as_view(),
+        name="resume-projects-generate",
     ),
 
     path(

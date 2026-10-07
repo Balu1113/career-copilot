@@ -115,6 +115,7 @@ const DENSITY_LABELS = {
 };
 
 const HEADING_LABELS = {
+  reference: "Underlined title with full-width rule",
   rule: "Rule under heading",
   bar: "Accent bar",
   caps: "Uppercase tracked",
@@ -122,6 +123,7 @@ const HEADING_LABELS = {
 };
 
 const HEADER_LABELS = {
+  reference: "Centred name and icon contact links",
   centered: "Centred, twin rules",
   accent: "Accent bar beside name",
   minimal: "Tracked capitals",
@@ -131,6 +133,7 @@ const HEADER_LABELS = {
 };
 
 const SKILL_LABELS = {
+  reference: "Labelled skill lines",
   pipes: "Dot separated",
   chips: "Pill tags",
   grid: "Grid boxes",
@@ -166,12 +169,12 @@ function getSpec(template = {}) {
 }
 
 
-function ExperienceBlock({ sectionKey }) {
+function ExperienceBlock({ sectionKey, spec }) {
   const entries = SAMPLE[sectionKey] || [];
 
   return (
     <div className="tm-section">
-      <h4 className="tm-h">
+      <h4 className={`tm-h tm-h-${spec.headingStyle}`}>
         {SECTION_TITLES[sectionKey]}
       </h4>
 
@@ -202,7 +205,7 @@ function TemplateSection({ sectionKey, spec }) {
   if (sectionKey === "summary") {
     return (
       <div className="tm-section">
-        <h4 className="tm-h">
+      <h4 className={`tm-h tm-h-${spec.headingStyle}`}>
           {SECTION_TITLES.summary}
         </h4>
 
@@ -214,7 +217,7 @@ function TemplateSection({ sectionKey, spec }) {
   if (sectionKey === "skills") {
     return (
       <div className="tm-section">
-        <h4 className="tm-h">
+      <h4 className={`tm-h tm-h-${spec.headingStyle}`}>
           {SECTION_TITLES.skills}
         </h4>
 
@@ -226,7 +229,7 @@ function TemplateSection({ sectionKey, spec }) {
   if (sectionKey === "education") {
     return (
       <div className="tm-section">
-        <h4 className="tm-h">
+      <h4 className={`tm-h tm-h-${spec.headingStyle}`}>
           {SECTION_TITLES.education}
         </h4>
 
@@ -252,7 +255,7 @@ function TemplateSection({ sectionKey, spec }) {
 
     return (
       <div className="tm-section">
-        <h4 className="tm-h">
+        <h4 className={`tm-h tm-h-${spec.headingStyle}`}>
           {SECTION_TITLES[sectionKey]}
         </h4>
 
@@ -293,6 +296,22 @@ function TemplateHeader({ spec }) {
   );
 
   switch (spec.headerStyle) {
+    case "reference":
+      return (
+        <header className="tm-header tm-header-reference">
+          {name}
+          <div className="tm-reference-contact">
+            <span>◉ github.com/javery</span>
+            <span>/</span>
+            <span><b>in</b> linkedin.com/in/javery</span>
+            <span>/</span>
+            <span>✉ jordan.avery@email.com</span>
+            <span>/</span>
+            <span>☎ +1 555 010 2233</span>
+          </div>
+        </header>
+      );
+
     case "band":
       return (
         <header className="tm-header tm-header-band">
@@ -375,6 +394,16 @@ function TemplateHeader({ spec }) {
  * Skill list styles: pills, dot separated text or a boxed grid.
  */
 function SkillsList({ spec }) {
+  if (spec.skillStyle === "reference") {
+    return (
+      <div className="tm-reference-skills">
+        <div><strong>Programming Languages:</strong> JavaScript, TypeScript, SQL</div>
+        <div><strong>Concepts:</strong> System Design, APIs, Testing</div>
+        <div><strong>Tools &amp; Platforms:</strong> React, Node.js, Git, AWS</div>
+      </div>
+    );
+  }
+
   if (spec.skillStyle === "pipes") {
     return (
       <div className="tm-pipes">

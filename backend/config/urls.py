@@ -36,6 +36,11 @@ urlpatterns = [
         "api/agents/",
         include("agents.urls"),
     ),
+
+    path(
+        "api/learn/",
+        include("learn.urls"),
+    ),
 ]
 
 urlpatterns += static(

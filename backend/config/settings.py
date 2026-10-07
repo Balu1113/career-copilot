@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "agents",
     "career",
     "resume_builder",
+    "learn",
 
 ]
 

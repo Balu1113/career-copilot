@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bot, FileText, Send, User } from "lucide-react";
 import api from "../services/api";
+import "../components/ChatShell.css";
 import "./ResumeChat.css";
 
 function ResumeChat() {

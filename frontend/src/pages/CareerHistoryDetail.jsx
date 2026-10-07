@@ -209,6 +209,7 @@ Object.keys(analysis.resume_intelligence).length > 0 && (
           data={
             analysis.skill_gap_analysis
           }
+          analysis={analysis}
         />
 
         <ResultObject
@@ -249,7 +250,7 @@ function ResultObject({ title, data, analysis }) {
   }
 
   if (title === "Skill Gap Analysis") {
-    return <SkillGapCard data={data} />;
+    return <SkillGapCard data={data} analysis={analysis} />;
   }
 
   if (title === "Career Recommendations") {
@@ -412,7 +413,9 @@ function ResumeAnalysisCard({ data }) {
 }
 
 
-function SkillGapCard({ data }) {
+function SkillGapCard({ data, analysis }) {
+  const navigate = useNavigate();
+
   return (
     <div className="career-result-card">
       <h3>Skill Gap Analysis</h3>
@@ -475,6 +478,31 @@ function SkillGapCard({ data }) {
           <div className="analysis-explanation">
             {data.explanation}
           </div>
+        </div>
+      )}
+
+      {analysis?.id && (
+        <div className="roadmap-cta">
+          <div>
+            <strong>Turn this analysis into a roadmap?</strong>
+
+            <p>
+              Generate a phased learning plan with skills,
+              topics, projects, and an AI tutor.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="roadmap-cta-btn"
+            onClick={() =>
+              navigate(
+                `/career-roadmap?analysis=${analysis.id}`
+              )
+            }
+          >
+            Generate Career Roadmap
+          </button>
         </div>
       )}
     </div>

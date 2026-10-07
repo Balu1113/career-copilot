@@ -83,6 +83,46 @@
   border-bottom: 0.2cqw solid var(--tm-accent, var(--border-strong));
 }
 
+/* Classic Linked: the supplied academic-style reference layout. */
+.tm-header-reference {
+  text-align: center;
+}
+
+.tm-header-reference .tm-name {
+  font-size: 3.2cqw;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.tm-reference-contact {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.45cqw;
+  margin-top: 2.4cqw;
+  font-size: 1.45cqw;
+  color: #0755c9;
+  text-decoration: underline;
+  text-underline-offset: 0.15cqw;
+}
+
+.tm-reference-contact > span:nth-child(even) {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.tm-reference-contact b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65cqw;
+  height: 1.65cqw;
+  color: white;
+  background: #111827;
+  font-size: 1.05cqw;
+  text-decoration: none;
+}
+
 
 /* 2 · Thick accent block beside the name (Modern) */
 
@@ -231,6 +271,13 @@
   color: var(--tm-accent, var(--accent-text));
 
   border-bottom: 0.17cqw solid var(--tm-accent, var(--accent));
+}
+
+.tm-frame .tm-h-reference {
+  color: #111;
+  text-decoration: underline;
+  text-underline-offset: 0.2cqw;
+  border-bottom: 0.17cqw solid #111;
 }
 
 .tm-frame .tm-h-bar {
@@ -390,6 +437,19 @@
   background: var(--tm-accent-soft, var(--success-soft));
   border: 0.15cqw solid var(--tm-accent, var(--success-border));
   border-radius: 0.5cqw;
+}
+
+.tm-reference-skills {
+  display: grid;
+  gap: 0.7cqw;
+  padding-left: 1.2cqw;
+  font-size: 1.65cqw;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+
+.tm-reference-skills strong {
+  color: var(--text);
 }
 
 

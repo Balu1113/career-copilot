@@ -278,6 +278,9 @@ function ResumeBuilder() {
   const [generatingSummary, setGeneratingSummary] =
     useState(false);
 
+  const [generatingProjects, setGeneratingProjects] =
+    useState(false);
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -835,6 +838,106 @@ function ResumeBuilder() {
       );
     } finally {
       setGeneratingSummary(false);
+    }
+  };
+
+  const requiredProjectSections = [
+    { key: "skills", label: "Skills" },
+  ];
+
+  const missingProjectSections = (content) => {
+    if (!content) return requiredProjectSections;
+
+    return requiredProjectSections.filter(
+      ({ key }) => !isFilled(content[key])
+    );
+  };
+
+  const hasContentForProjects = (content) =>
+    missingProjectSections(content).length === 0;
+
+  const handleGenerateProjects = async () => {
+    const missing = missingProjectSections(resumeContent);
+
+    if (missing.length) {
+      setError(
+        `Please complete the following sections before generating projects: ${missing
+          .map((section) => section.label)
+          .join(", ")}.`
+      );
+      return;
+    }
+
+    try {
+      setGeneratingProjects(true);
+      setError("");
+      setSuccess("");
+
+      const response = await api.post(
+        "/resume-builder/projects/generate/",
+        {
+          content: resumeContent,
+          job_description: jobDescription,
+        }
+      );
+
+      const generated = Array.isArray(
+        response.data.projects
+      )
+        ? response.data.projects
+        : [];
+
+      const existing = Array.isArray(
+        resumeContent.projects
+      )
+        ? resumeContent.projects
+        : [];
+
+      const takenNames = new Set(
+        existing.map((project) =>
+          String(project.name || "")
+            .trim()
+            .toLowerCase()
+        )
+      );
+
+      const newProjects = generated.filter((project) => {
+        const name = String(project?.name || "")
+          .trim()
+          .toLowerCase();
+
+        if (!name || takenNames.has(name)) {
+          return false;
+        }
+
+        takenNames.add(name);
+        return true;
+      });
+
+      setResumeContent((prev) => ({
+        ...prev,
+        projects: [
+          ...(prev.projects || []),
+          ...newProjects,
+        ],
+      }));
+
+      setSuccess(
+        newProjects.length
+          ? `${newProjects.length} new project${
+              newProjects.length === 1 ? "" : "s"
+            } added. Existing projects were left unchanged.`
+          : "No new projects to add. Existing projects were left unchanged."
+      );
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err?.response?.data?.detail ||
+          "Failed to generate projects."
+      );
+    } finally {
+      setGeneratingProjects(false);
     }
   };
 
@@ -2892,6 +2995,13 @@ function ResumeBuilder() {
           margin-bottom: 17px;
         }
 
+        .rb-editor-section-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
         .rb-editor-section-title h3 {
           display: flex;
           align-items: center;
@@ -4242,14 +4352,60 @@ function ResumeBuilder() {
                           Projects
                         </h3>
 
-                        <button
-                          type="button"
-                          className="rb-button rb-button-outline"
-                          onClick={addProject}
-                        >
-                          <Plus size={14} />
-                          Add Project
-                        </button>
+                        <div className="rb-editor-section-actions">
+                          <button
+                            type="button"
+                            className="rb-button rb-button-outline"
+                            onClick={handleGenerateProjects}
+                            disabled={
+                              generatingProjects ||
+                              !hasContentForProjects(
+                                resumeContent
+                              )
+                            }
+                            title={
+                              generatingProjects
+                                ? "Generating projects..."
+                                : missingProjectSections(
+                                    resumeContent
+                                  ).length
+                                ? "Complete the following sections to enable AI project generation: " +
+                                  missingProjectSections(
+                                    resumeContent
+                                  )
+                                    .map(
+                                      (section) =>
+                                        section.label
+                                    )
+                                    .join(", ")
+                                : "Add new projects with AI (existing projects stay unchanged)"
+                            }
+                          >
+                            {generatingProjects ? (
+                              <>
+                                <Loader2
+                                  size={14}
+                                  className="spin"
+                                />
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles size={14} />
+                                AI Generate
+                              </>
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            className="rb-button rb-button-outline"
+                            onClick={addProject}
+                          >
+                            <Plus size={14} />
+                            Add Project
+                          </button>
+                        </div>
                       </div>
 
                       {resumeContent.projects.map(

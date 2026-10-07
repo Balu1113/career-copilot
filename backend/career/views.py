@@ -1,6 +1,7 @@
 import json
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 
 from rest_framework import permissions, status
 from rest_framework.response import Response
@@ -23,13 +24,21 @@ from rag.services.vector_store import load_resume_vector_store
 from agents.services.agent_stream import stream_career_analysis
 from agents.services.interview_evaluator import evaluate_interview_answer
 
-from career.models import CareerAnalysis, CareerRoadmap, InterviewSession
+from career.models import (
+    CareerAnalysis,
+    CareerRoadmap,
+    InterviewSession,
+    RoadmapLesson,
+)
 
 from .serializers import (
     CareerAnalysisSerializer,
     CareerAnalysisHistorySerializer,
     InterviewPrepSerializer,
     InterviewAnswerEvaluationSerializer,
+    RoadmapLessonPlanSerializer,
+    RoadmapLessonUpdateSerializer,
+    RoadmapTutorRequestSerializer,
 )
 
 from .services.interview_analytics import (
@@ -38,6 +47,13 @@ from .services.interview_analytics import (
 from .services.interview_prep import generate_interview_prep
 from .services.resume_optimizer import optimize_resume_for_job
 from .services.roadmap_generator import generate_career_roadmap
+from .services.roadmap_tutor import (
+    LESSON_COLLECTIONS,
+    LEVELS,
+    build_roadmap_inventory,
+    generate_roadmap_lesson_plan,
+    generate_roadmap_tutor_lesson,
+)
 from .services.interview_simulator import (
     create_interview_session,
     submit_interview_answer,
@@ -875,6 +891,381 @@ class CareerRoadmapDetailView(APIView):
                 "created_at": roadmap.created_at,
                 "updated_at": roadmap.updated_at,
             }
+        )
+
+    def delete(self, request, roadmap_id):
+        try:
+            roadmap = CareerRoadmap.objects.get(
+                id=roadmap_id,
+                user=request.user,
+            )
+        except CareerRoadmap.DoesNotExist:
+            return Response(
+                {"detail": "Career roadmap not found."},
+                status=404,
+            )
+
+        roadmap.delete()
+
+        return Response(
+            status=status.HTTP_204_NO_CONTENT
+        )
+
+
+class CareerRoadmapTutorView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, roadmap_id):
+        serializer = RoadmapTutorRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            roadmap = CareerRoadmap.objects.get(
+                id=roadmap_id,
+                user=request.user,
+            )
+        except CareerRoadmap.DoesNotExist:
+            return Response(
+                {"detail": "Career roadmap not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        roadmap_data = roadmap.roadmap_data
+        content_type = serializer.validated_data["content_type"]
+        item_index = serializer.validated_data["item_index"]
+        collection_by_type = {
+            "skill": "skills_to_learn",
+            "topic": "learning_topics",
+            "project": "recommended_projects",
+            "phase": "phases",
+        }
+        items = roadmap_data.get(collection_by_type[content_type], [])
+
+        if item_index >= len(items):
+            return Response(
+                {"detail": "The selected roadmap item was not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            lesson = generate_roadmap_tutor_lesson(
+                roadmap=roadmap_data,
+                content_type=content_type,
+                item=items[item_index],
+            )
+            return Response(lesson)
+        except Exception as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+ITEM_LABEL_FIELDS = {
+    "skill": "skill",
+    "topic": "topic",
+    "project": "name",
+    "phase": "phase",
+}
+
+
+def serialize_roadmap_lesson(lesson, include_content=False):
+    data = {
+        "id": lesson.id,
+        "position": lesson.position,
+        "content_type": lesson.content_type,
+        "item_index": lesson.item_index,
+        "level": lesson.level,
+        "title": lesson.title,
+        "overview": lesson.overview,
+        "estimated_time": lesson.estimated_time,
+        "completed": lesson.completed,
+        "has_content": bool(lesson.lesson_data),
+        "created_at": lesson.created_at,
+        "updated_at": lesson.updated_at,
+    }
+
+    if include_content:
+        data["lesson"] = lesson.lesson_data
+
+    return data
+
+
+def serialize_lesson_plan(roadmap):
+    lessons = list(roadmap.lessons.all())
+    completed = sum(1 for lesson in lessons if lesson.completed)
+
+    return {
+        "roadmap": {
+            "id": roadmap.id,
+            "title": roadmap.title,
+            "target_role": roadmap.target_role,
+        },
+        "learner_level": roadmap.learner_level,
+        "progress": {
+            "total": len(lessons),
+            "completed": completed,
+        },
+        "lessons": [
+            serialize_roadmap_lesson(lesson)
+            for lesson in lessons
+        ],
+    }
+
+
+def build_lesson_rows(roadmap, outline_lessons):
+    inventory = build_roadmap_inventory(roadmap.roadmap_data)
+
+    outline_by_key = {}
+    for entry in outline_lessons or []:
+        if not isinstance(entry, dict):
+            continue
+
+        key = (
+            entry.get("content_type"),
+            entry.get("item_index"),
+        )
+        outline_by_key[key] = entry
+
+    rows = []
+
+    for position, item in enumerate(inventory):
+        outline = outline_by_key.get(
+            (item["content_type"], item["item_index"]),
+            {},
+        )
+        raw_item = item["item"]
+        label_field = ITEM_LABEL_FIELDS[item["content_type"]]
+
+        if isinstance(raw_item, dict):
+            derived_title = str(
+                raw_item.get(label_field) or ""
+            ).strip()
+        else:
+            derived_title = str(raw_item).strip()
+
+        level = outline.get("level")
+        if level not in LEVELS:
+            level = roadmap.learner_level
+
+        rows.append(
+            RoadmapLesson(
+                roadmap=roadmap,
+                content_type=item["content_type"],
+                item_index=item["item_index"],
+                position=position,
+                level=level,
+                title=outline.get("title") or derived_title,
+                overview=outline.get("overview") or "",
+                estimated_time=(
+                    outline.get("estimated_time") or ""
+                ),
+            )
+        )
+
+    return rows
+
+
+class CareerRoadmapLessonView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_roadmap(self, request, roadmap_id):
+        try:
+            return CareerRoadmap.objects.get(
+                id=roadmap_id,
+                user=request.user,
+            )
+        except CareerRoadmap.DoesNotExist:
+            return None
+
+    def get(self, request, roadmap_id):
+        roadmap = self.get_roadmap(request, roadmap_id)
+
+        if roadmap is None:
+            return Response(
+                {"detail": "Career roadmap not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(serialize_lesson_plan(roadmap))
+
+    def post(self, request, roadmap_id):
+        serializer = RoadmapLessonPlanSerializer(
+            data=request.data
+        )
+        serializer.is_valid(raise_exception=True)
+
+        roadmap = self.get_roadmap(request, roadmap_id)
+
+        if roadmap is None:
+            return Response(
+                {"detail": "Career roadmap not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        level = serializer.validated_data["level"]
+        regenerate = serializer.validated_data["regenerate"]
+
+        existing = roadmap.lessons.all()
+
+        if existing.exists() and not regenerate:
+            return Response(
+                serialize_lesson_plan(roadmap),
+                status=status.HTTP_200_OK,
+            )
+
+        inventory = build_roadmap_inventory(
+            roadmap.roadmap_data
+        )
+
+        if inventory:
+            try:
+                plan = generate_roadmap_lesson_plan(
+                    roadmap=roadmap.roadmap_data,
+                    level=level,
+                )
+            except Exception as exc:
+                return Response(
+                    {"detail": str(exc)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            plan = {"lessons": []}
+
+        roadmap.learner_level = level
+        roadmap.save(update_fields=["learner_level"])
+
+        existing.delete()
+
+        rows = build_lesson_rows(
+            roadmap,
+            plan.get("lessons", []),
+        )
+
+        if rows:
+            RoadmapLesson.objects.bulk_create(rows)
+
+        return Response(
+            serialize_lesson_plan(roadmap),
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class CareerRoadmapLessonDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_lesson(self, request, roadmap_id, lesson_id):
+        try:
+            return RoadmapLesson.objects.select_related(
+                "roadmap"
+            ).get(
+                id=lesson_id,
+                roadmap_id=roadmap_id,
+                roadmap__user=request.user,
+            )
+        except RoadmapLesson.DoesNotExist:
+            return None
+
+    def get(self, request, roadmap_id, lesson_id):
+        lesson = self.get_lesson(
+            request, roadmap_id, lesson_id
+        )
+
+        if lesson is None:
+            return Response(
+                {"detail": "Roadmap lesson not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Lessons saved before detailed content was introduced
+        # are regenerated once so every lesson is full length.
+        needs_content = (
+            not lesson.lesson_data
+            or "sections" not in lesson.lesson_data
+        )
+
+        if needs_content:
+            roadmap_data = lesson.roadmap.roadmap_data
+            collection = LESSON_COLLECTIONS[
+                lesson.content_type
+            ]
+            items = roadmap_data.get(collection, []) or []
+
+            if lesson.item_index >= len(items):
+                return Response(
+                    {
+                        "detail": "The roadmap item for this "
+                        "lesson no longer exists."
+                    },
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            try:
+                lesson_data = generate_roadmap_tutor_lesson(
+                    roadmap=roadmap_data,
+                    content_type=lesson.content_type,
+                    item=items[lesson.item_index],
+                    level=lesson.level,
+                )
+            except Exception as exc:
+                return Response(
+                    {"detail": str(exc)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            lesson.lesson_data = lesson_data
+            lesson.title = (
+                lesson_data.get("title") or lesson.title
+            )
+            lesson.overview = (
+                lesson_data.get("overview") or lesson.overview
+            )
+            lesson.estimated_time = (
+                lesson_data.get("estimated_time")
+                or lesson.estimated_time
+            )
+            lesson.save()
+
+        return Response(
+            serialize_roadmap_lesson(
+                lesson, include_content=True
+            )
+        )
+
+    def patch(self, request, roadmap_id, lesson_id):
+        serializer = RoadmapLessonUpdateSerializer(
+            data=request.data
+        )
+        serializer.is_valid(raise_exception=True)
+
+        lesson = self.get_lesson(
+            request, roadmap_id, lesson_id
+        )
+
+        if lesson is None:
+            return Response(
+                {"detail": "Roadmap lesson not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        lesson.completed = serializer.validated_data[
+            "completed"
+        ]
+        lesson.completed_at = (
+            timezone.now() if lesson.completed else None
+        )
+        lesson.save(
+            update_fields=[
+                "completed",
+                "completed_at",
+                "updated_at",
+            ]
+        )
+
+        return Response(
+            serialize_roadmap_lesson(
+                lesson, include_content=bool(lesson.lesson_data)
+            )
         )
 
 

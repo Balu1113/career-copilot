@@ -202,6 +202,18 @@ const missingSummarySections = (content) => {
   );
 };
 
+const requiredProjectSections = [
+  { key: "skills", label: "Skills" },
+];
+
+const missingProjectSections = (content) => {
+  if (!content) return requiredProjectSections;
+
+  return requiredProjectSections.filter(
+    ({ key }) => !isFilled(content[key])
+  );
+};
+
 function Field({
   label,
   value,
@@ -283,6 +295,8 @@ function ResumeEdit() {
 
   const [aiWorking, setAiWorking] = useState(false);
   const [summaryWorking, setSummaryWorking] = useState(false);
+  const [projectsWorking, setProjectsWorking] =
+    useState(false);
 
   const [instruction, setInstruction] = useState("");
   const [jobDescription, setJobDescription] = useState("");
@@ -648,6 +662,89 @@ function ResumeEdit() {
       );
     } finally {
       setSummaryWorking(false);
+    }
+  };
+
+  const handleGenerateProjects = async () => {
+    const missing = missingProjectSections(content);
+
+    if (missing.length) {
+      setError(
+        `Complete these sections first: ${missing
+          .map((section) => section.label)
+          .join(", ")}.`
+      );
+      return;
+    }
+
+    setProjectsWorking(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await api.post(
+        "/resume-builder/projects/generate/",
+        {
+          content,
+          job_description: jobDescription,
+        }
+      );
+
+      const generated = Array.isArray(
+        response.data.projects
+      )
+        ? response.data.projects
+        : [];
+
+      const existing = Array.isArray(content.projects)
+        ? content.projects
+        : [];
+
+      const takenNames = new Set(
+        existing.map((project) =>
+          String(project.name || "")
+            .trim()
+            .toLowerCase()
+        )
+      );
+
+      const newProjects = generated.filter((project) => {
+        const name = String(project?.name || "")
+          .trim()
+          .toLowerCase();
+
+        if (!name || takenNames.has(name)) {
+          return false;
+        }
+
+        takenNames.add(name);
+        return true;
+      });
+
+      setContent((prev) => ({
+        ...prev,
+        projects: [
+          ...(prev.projects || []),
+          ...newProjects,
+        ],
+      }));
+
+      setSuccess(
+        newProjects.length
+          ? `${newProjects.length} new project${
+              newProjects.length === 1 ? "" : "s"
+            } added. Existing projects were left unchanged.`
+          : "No new projects to add. Existing projects were left unchanged."
+      );
+    } catch (err) {
+      console.error(err);
+
+      setError(
+        err?.response?.data?.detail ||
+          "Failed to generate projects."
+      );
+    } finally {
+      setProjectsWorking(false);
     }
   };
 
@@ -1238,6 +1335,7 @@ function ResumeEdit() {
   }
 
   const summaryMissing = missingSummarySections(content);
+  const projectsMissing = missingProjectSections(content);
 
   return (
     <div className="resume-edit-page">
@@ -1638,14 +1736,42 @@ function ResumeEdit() {
         icon={FolderKanban}
         title="Projects"
         action={
-          <button
-            type="button"
-            className="ed-btn ed-btn-outline"
-            onClick={addProject}
-          >
-            <Plus size={14} />
-            Add
-          </button>
+          <div className="ed-section-actions">
+            <button
+              type="button"
+              className="ed-btn ed-btn-outline"
+              onClick={handleGenerateProjects}
+              disabled={projectsWorking}
+              title={
+                projectsMissing.length
+                  ? `Complete first: ${projectsMissing
+                      .map((s) => s.label)
+                      .join(", ")}`
+                  : "Add new projects with AI (existing projects stay unchanged)"
+              }
+            >
+              {projectsWorking ? (
+                <>
+                  <Loader2 size={14} />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={14} />
+                  AI Generate
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              className="ed-btn ed-btn-outline"
+              onClick={addProject}
+            >
+              <Plus size={14} />
+              Add
+            </button>
+          </div>
         }
       >
         {(content.projects || []).length === 0 && (

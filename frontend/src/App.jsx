@@ -26,6 +26,12 @@ const CareerAnalysis = lazy(() => import("./pages/CareerAnalysis"));
 const CareerHistory = lazy(() => import("./pages/CareerHistory"));
 const CareerHistoryDetail = lazy(() => import("./pages/CareerHistoryDetail"));
 const CareerRoadmap = lazy(() => import("./pages/CareerRoadmap"));
+const CareerRoadmapLessons = lazy(() =>
+  import("./pages/CareerRoadmapLessons"),
+);
+const CareerRoadmapTutor = lazy(() =>
+  import("./pages/CareerRoadmapTutor"),
+);
 
 const InterviewPrep = lazy(() => import("./pages/InterviewPrep"));
 const InterviewSimulator = lazy(() => import("./pages/InterviewSimulator"));
@@ -34,6 +40,7 @@ const InterviewHistory = lazy(() => import("./pages/InterviewHistory"));
 const InterviewPractice = lazy(() => import("./pages/InterviewPractice"));
 
 const Settings = lazy(() => import("./pages/Settings"));
+const LearnChat = lazy(() => import("./pages/LearnChat"));
 
 /* Pages that historically rendered their own <main> keep it as their
    root element. These five relied on the router providing the main
@@ -79,6 +86,7 @@ function App() {
               element={inMain(<ResumeEdit />)}
             />
             <Route path="/resume-chat" element={<ResumeChat />} />
+            <Route path="/learn" element={<LearnChat />} />
             <Route
               path="/resume-intelligence"
               element={<ResumeIntelligence />}
@@ -92,6 +100,14 @@ function App() {
             <Route path="/career-history" element={<CareerHistory />} />
             <Route path="/career-history/:id" element={<CareerHistoryDetail />} />
             <Route path="/career-roadmap" element={<CareerRoadmap />} />
+            <Route
+              path="/career-roadmap/:roadmapId/lessons"
+              element={<CareerRoadmapLessons />}
+            />
+            <Route
+              path="/career-roadmap/:roadmapId/tutor/:contentType/:itemIndex"
+              element={<CareerRoadmapTutor />}
+            />
 
             <Route path="/interview-prep" element={<InterviewPrep />} />
             <Route

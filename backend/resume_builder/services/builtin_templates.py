@@ -102,6 +102,35 @@ def _template(
 # parsed badly by most Applicant Tracking Systems.
 BUILTIN_TEMPLATES = [
     _template(
+        slug="classic-linked",
+        name="Classic Linked",
+        description=(
+            "Clean Arial resume inspired by a traditional academic layout: "
+            "a centred name, icon-led contact links, and bold underlined "
+            "section labels with full-width black rules."
+        ),
+        ats_score=98,
+        font="Arial",
+        body_size=10.5,
+        header_size=18.0,
+        heading_size=11.0,
+        margins=(0.32, 0.4, 0.57),
+        accent="#000000",
+        accent_soft="#ffffff",
+        header_style="reference",
+        heading_style="reference",
+        skill_style="reference",
+        header_align="center",
+        density="compact",
+        sections=[
+            "education",
+            "projects",
+            "skills",
+            "certifications",
+            "experience",
+        ],
+    ),
+    _template(
         slug="ats-classic",
         name="Classic ATS",
         description=(

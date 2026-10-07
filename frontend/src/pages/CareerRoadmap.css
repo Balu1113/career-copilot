@@ -252,6 +252,29 @@
   text-align: center;
 }
 
+.roadmap-new-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--accent-border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.roadmap-new-btn:hover {
+  background: var(--accent-soft);
+  border-style: solid;
+}
+
 .roadmap-history-item {
   width: 100%;
   display: flex;
@@ -366,6 +389,66 @@
   font-size: 14px;
 }
 
+.roadmap-overview-actions {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+.roadmap-lesson-plan-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 13px;
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.roadmap-lesson-plan-btn:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+
+.roadmap-delete-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.roadmap-delete-btn:hover:not(:disabled) {
+  border-color: #dc2626;
+  color: #dc2626;
+  background: rgb(220 38 38 / 8%);
+}
+
+.roadmap-delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.career-roadmap-empty > button + button {
+  margin-left: 10px;
+}
+
 /* Sections */
 
 .roadmap-section {
@@ -411,10 +494,39 @@
 }
 
 .roadmap-skill-card {
+  width: 100%;
   padding: 17px;
   border: 1px solid var(--border);
   border-radius: 11px;
   background: var(--bg-subtle);
+  color: var(--text);
+  text-align: left;
+}
+
+.roadmap-tutor-card {
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.roadmap-tutor-card:hover {
+  border-color: var(--accent-border);
+  background: var(--surface-2);
+  transform: translateY(-2px);
+  box-shadow: 0 7px 20px rgba(15, 23, 42, 0.07);
+}
+
+.roadmap-tutor-prompt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  color: var(--accent-text);
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .roadmap-card-top {
@@ -472,8 +584,10 @@
 }
 
 .roadmap-topic-card {
+  width: 100%;
   display: flex;
   align-items: flex-start;
+  text-align: left;
   gap: 14px;
   padding: 15px;
   border: 1px solid var(--border);
@@ -537,6 +651,9 @@
 }
 
 .roadmap-project-card {
+  width: 100%;
+  text-align: left;
+  color: var(--text);
   padding: 19px;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -544,11 +661,6 @@
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
-}
-
-.roadmap-project-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 7px 20px rgba(15, 23, 42, 0.07);
 }
 
 .project-icon {
@@ -649,10 +761,13 @@
 .phase-content {
   flex: 1;
   min-width: 0;
+  width: 100%;
   padding: 18px;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--bg-subtle);
+  color: var(--text);
+  text-align: left;
 }
 
 .phase-label {

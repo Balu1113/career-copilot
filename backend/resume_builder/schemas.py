@@ -128,6 +128,12 @@ class ResumeSummaryOutput(BaseModel):
     summary: str = ""
 
 
+class ResumeProjectsOutput(BaseModel):
+    projects: list[ResumeProject] = Field(
+        default_factory=list
+    )
+
+
 class GeneratedResumeContent(BaseModel):
     """
     Complete editable resume structure.

@@ -353,15 +353,21 @@ def _add_header(
     # ---------------------------------------------------------------
 
     contact_parts = []
-
-    for field in (
+    contact_fields = (
+        "github",
+        "linkedin",
+        "email",
+        "phone",
+    ) if header_style == "reference" else (
         "email",
         "phone",
         "location",
         "linkedin",
         "github",
         "website",
-    ):
+    )
+
+    for field in contact_fields:
         value = personal.get(
             field,
             "",
@@ -382,16 +388,49 @@ def _add_header(
             line_spacing=1.0,
         )
 
-        run = paragraph.add_run(
-            " | ".join(contact_parts)
-        )
-
-        _set_run_font(
-            run,
-            font_name=body_font,
-            font_size=min(body_size, 10),
-            bold=False,
-        )
+        if header_style == "reference":
+            icons = {
+                "github": "◉",
+                "linkedin": "in",
+                "email": "✉",
+                "phone": "☎",
+            }
+            rendered_contact_count = 0
+            for field in contact_fields:
+                value = personal.get(field, "").strip()
+                if not value:
+                    continue
+                if rendered_contact_count:
+                    divider = paragraph.add_run("  /  ")
+                    _set_run_font(
+                        divider,
+                        font_name=body_font,
+                        font_size=min(body_size, 10),
+                    )
+                icon = paragraph.add_run(f"{icons[field]} ")
+                _set_run_font(
+                    icon,
+                    font_name="Segoe UI Symbol",
+                    font_size=min(body_size, 10),
+                    bold=field == "linkedin",
+                )
+                value_run = paragraph.add_run(value)
+                _set_run_font(
+                    value_run,
+                    font_name=body_font,
+                    font_size=min(body_size, 10),
+                )
+                _set_run_color(value_run, "0543C9")
+                value_run.underline = True
+                rendered_contact_count += 1
+        else:
+            run = paragraph.add_run(" | ".join(contact_parts))
+            _set_run_font(
+                run,
+                font_name=body_font,
+                font_size=min(body_size, 10),
+                bold=False,
+            )
 
 
 # -------------------------------------------------------------------
@@ -459,9 +498,9 @@ def _add_section_heading(
         bold=True,
     )
     _set_run_color(run, accent_hex)
-    if heading_style == "underline":
+    if heading_style in {"underline", "reference"}:
         run.underline = True
-    elif heading_style in {"bar", "rule"}:
+    if heading_style in {"bar", "rule", "reference"}:
         _set_paragraph_border(
             paragraph,
             "left" if heading_style == "bar" else "bottom",

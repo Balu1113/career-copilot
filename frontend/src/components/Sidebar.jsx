@@ -7,6 +7,7 @@ import {
   CircleHelp,
   ClipboardList,
   FileText,
+  GraduationCap,
   History,
   LayoutDashboard,
   Map,
@@ -44,6 +45,7 @@ const NAV_GROUPS = [
       { label: "Career Roadmap", path: "/career-roadmap", icon: Map },
       { label: "Resume Intelligence", path: "/resume-intelligence", icon: Brain },
       { label: "Resume AI Chat", path: "/resume-chat", icon: MessageSquareText },
+      { label: "Learning Tutor", path: "/learn", icon: GraduationCap },
     ],
   },
   {
